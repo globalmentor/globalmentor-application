@@ -46,7 +46,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	@exception SecurityException Thrown if a security manager is present and
 		it denies <code>RuntimePermission("preferences")</code>.
 	*/
-	public Preferences getPreferences()
+	public Preferences getPreferences() throws SecurityException
 	{
 		return Preferences.userNodeForPackage(getClass());	//return the user preferences node for whatever class extends this one 
 	}
@@ -113,7 +113,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		<code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
 	*/
-	protected File getConfigurationDirectory()
+	protected File getConfigurationDirectory() throws SecurityException
 	{
 		return new File(System.getProperty(SystemConstants.USER_HOME_PROPERTY), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
 	}
@@ -125,7 +125,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		<code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
 	*/
-	protected File getConfigurationFile()
+	protected File getConfigurationFile() throws SecurityException
 	{
 		return new File(getConfigurationDirectory(), CONFIGURATION_FILENAME);	//return the configuratoin file inside the configuration directory		
 	}
@@ -155,28 +155,28 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		private void setConfiguration(final Model config) {configuration=config;}
 
 	/**The configuration strategy, or <code>null</code> if there is no configuration storage.*/
-	private ConfigurationStrategy configurationStrategy=null;
+//G***del	private ConfigurationStrategy configurationStrategy=null;
 
 		/**@return The configuration strategy, or <code>null</code> if there is no configuration storage.*/
-		public ConfigurationStrategy getConfigurationStrategy() {return configurationStrategy;}
+//G***del		public ConfigurationStrategy getConfigurationStrategy() {return configurationStrategy;}
 
 		/**Sets the configuration strategy.
 		@param strategy The configuration strategy, or <code>null</code> if
 			there should be no configuration.
 		*/
-		protected void setConfigurationStrategy(final ConfigurationStrategy strategy) {configurationStrategy=strategy;}
+//G***del		protected void setConfigurationStrategy(final ConfigurationStrategy strategy) {configurationStrategy=strategy;}
 
 	/**The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-//G***del	private ModelIOKit configurationIOKit=null;
+	private ModelIOKit configurationIOKit=null;
 
 		/**@return The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-//G***del		public ModelIOKit getConfigurationIOKit() {return configurationIOKit;}
+		public ModelIOKit getConfigurationIOKit() {return configurationIOKit;}
 
 		/**Sets the configuration storage I/O kit.
-		@param storage The configuration storage I/O kit, or <code>null</code> if
+		@param ioKit The configuration storage I/O kit, or <code>null</code> if
 			there should be no configuration.
 		*/
-//G***del		protected void setConfigurationIOKit(final ModelIOKit ioKit) {configurationIOKit=ioKit;}
+		protected void setConfigurationIOKit(final ModelIOKit ioKit) {configurationIOKit=ioKit;}
 
 	/**The configuration storage strategy, or <code>null</code> if there is no configuration storage.*/
 //G***del	private ModelStorage configurationStorage=null;
@@ -216,6 +216,14 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	public void initialize() throws Exception	//TODO create a flag that only allows initialization once
 	{
 		loadConfiguration();	//load the configuration
+		if(getConfiguration()==null)	//if we were unable to load the configuration
+		{
+			final Model configuration=createDefaultConfiguration();	//create a default configuration
+			if(configuration!=null)	//if we created a default configuration
+			{
+				setConfiguration(configuration);	//set the configuration
+			}
+		}
 	}
 
 	/**The main application method.
@@ -246,13 +254,23 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		return true;	//show that everything went OK
 	}
 
+	/**Creates a default configuration if one cannot be loaded.
+	This version returns <code>null</code>.
+	@return A default configuration, or <code>null</code> if the application
+		does not need a configuration.
+	*/
+	protected Model createDefaultConfiguration()
+	{
+		return null;	//this version doesn't create a configuration
+	}
+
 	/**Loads configuration information.
 	@throws IOException if there is an error loading the configuration information.
 	*/
 	protected void loadConfiguration() throws IOException
 	{
-		final ConfigurationStrategy configurationStrategy=getConfigurationStrategy();	//see if we can access the configuration
-		if(configurationStrategy!=null)	//if we can load application configuration information
+		final ModelIOKit configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
+		if(configurationIOKit!=null)	//if we can load application configuration information
 		{
 			Model configuration=null;	//we'll try to get the configuration from somewhere
 			try
@@ -260,27 +278,12 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 				final File configurationFile=getConfigurationFile();	//get the configuration file
 				if(FileUtilities.checkExists(configurationFile))	//if there is a configuration file (or a backup configuration file)
 				{
-					configuration=configurationStrategy.getConfigurationIOKit().load(configurationFile.toURI());	//ask the I/O kit to load the configuration file
+					configuration=configurationIOKit.load(configurationFile.toURI());	//ask the I/O kit to load the configuration file
 				}
 			}
 			catch(SecurityException securityException)	//if we can't access the configuration file
 			{
 				Debug.warn(securityException);	//warn of the security problem			
-			}
-			if(configuration==null)	//if we couldn't load the configuration
-			{
-				try
-				{
-					configuration=(Model)configurationStrategy.getConfigurationClass().newInstance();	//create a new instance of the configuration class
-				}
-				catch(InstantiationException instantiationException)
-				{
-					throw Debug.toAssertionError(instantiationException);
-				}
-				catch (IllegalAccessException illegalAccessException)
-				{
-					throw Debug.toAssertionError(illegalAccessException);
-				}
 			}
 			setConfiguration(configuration);	//set the configuration to whatever we found
 			setModified(false);	//the application has not been modified, as its configuration has just been loaded
@@ -292,9 +295,9 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	*/
 	public void saveConfiguration() throws IOException
 	{
-		final ConfigurationStrategy configurationStrategy=getConfigurationStrategy();	//see if we can access the configuration
+		final ModelIOKit configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
 		final Model configuration=getConfiguration();	//get the configuration
-		if(configurationStrategy!=null && configuration!=null)	//if we can save application configuration information, and there is configuration information to save
+		if(configurationIOKit!=null && configuration!=null)	//if we can save application configuration information, and there is configuration information to save
 		{
 			try
 			{
@@ -307,7 +310,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 				final File tempFile=FileUtilities.getTempFile(configurationFile);  //get a temporary file to write to
 
 				final File backupFile=FileUtilities.getBackupFile(configurationFile);  //get a backup file
-				configurationStrategy.getConfigurationIOKit().save(configuration, tempFile.toURI());	//ask the I/O kit to save the configuration to the temporary file
+				configurationIOKit.save(configuration, tempFile.toURI());	//ask the I/O kit to save the configuration to the temporary file
 				FileUtilities.moveFile(tempFile, configurationFile, backupFile); //move the temp file to the normal file, creating a backup if necessary
 				setModified(false);	//the application has not been modified, as its configuration has just been saved
 			}
@@ -403,6 +406,9 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	
 	/**Determines whether the application can exit.
 	This method may query the user.
+	If the application has been modified, the configuration is saved if possible.
+	If there is no configuration I/O kit, no action is taken.
+	If an error occurs, the user is notified.
 	@return <code>true</code> if the application can exit, else <code>false</code>.
 	*/
 	protected boolean canExit()
@@ -438,9 +444,6 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	}
 	
 	/**Exits the application with the given status.
-	If the application has been modified, the configuration is saved if possible.
-	If there is no configuration strategy, no action is taken.
-	If an error occurs, the user is notified.
 	@param status The exit status.
 	*/
 	public void exit(final int status)
@@ -544,39 +547,6 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	{
 		if(propertyChangeSupport!=null) //if we have property change support (if not, no listeners could have been added so there would be no reason to fire change events)
 			propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue);  //let the change support fire the property change
-	}
-
-	/**Application configuration strategy.*/
-	protected static class ConfigurationStrategy
-	{
-		/**The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-		private ModelIOKit configurationIOKit=null;
-
-			/**@return The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-			protected ModelIOKit getConfigurationIOKit() {return configurationIOKit;}
-
-		/**The configuration class from which to create a default configuration, if needed.*/
-		private Class configurationClass;
-
-			/**Returns the class from which to create a default configuration, if needed.
-			<p>The class must provide a default constructor.</p>
-			@return The class from which to create a default configuration.
-			*/
-			protected Class getConfigurationClass() {return configurationClass;}
-
-		/**Constructs a way to access configuration information.
-		<p>The configuration class must provide a default constructor.</p>
-		@param storage The configuration storage I/O kit, or <code>null</code> if
-			there should be no configuration.
-		@param configurationClass The class from which to create a default
-			configuration, if needed.
-		*/
-		public ConfigurationStrategy(final ModelIOKit ioKit, final Class configurationClass)
-		{
-			this.configurationIOKit=ioKit;
-			//TODO check to make sure the configuration class has a default constructor; if not, throw an illegal argument exception
-			this.configurationClass=configurationClass;
-		}		
 	}
 
 }
