@@ -7,6 +7,9 @@ import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
 import com.garretwilson.lang.*;
+import com.garretwilson.net.Authenticable;
+import com.garretwilson.net.SwingAuthenticator;
+import com.garretwilson.net.http.HTTPClient;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
 
@@ -21,6 +24,26 @@ import com.garretwilson.rdf.dublincore.DCUtilities;
 public abstract class Application<C> extends DefaultRDFResource implements Modifiable 
 {
 
+	/**The authenticator object used to retrieve client authentication.*/
+	private Authenticable authenticator=null;
+
+		/**@return The authenticator object used to retrieve client authentication.*/
+		public Authenticable getAuthenticator() {return authenticator;}
+	
+		/**Sets the authenticator object used to retrieve client authentication.
+		This version updates the authenticator of the default HTTP client.
+		@param authenticable The object to retrieve authentication information regarding a client.
+		@see com.garretwilson.net.http.HTTPClient
+		*/
+		public void setAuthenticator(final Authenticable authenticable)
+		{
+			if(authenticator!=authenticable)	//if the authenticator is really changing
+			{
+				authenticator=authenticable;	//update the authenticator
+				HTTPClient.getInstance().setAuthenticator(authenticable);	//update the authenticator for HTTP connections on the default HTTP client			
+			}
+		}
+	
 	/**Whether the object has been modified; the default is not modified.*/
 	private boolean modified=false;
 
