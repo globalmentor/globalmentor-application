@@ -40,7 +40,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	private final String[] args;
 
 		/**@return The command-line arguments of the application.*/
-		protected String[] getArgs() {return args;}
+		public String[] getArgs() {return args;}
 
 	/**@return The default user preferences for this frame.
 	@exception SecurityException Thrown if a security manager is present and
