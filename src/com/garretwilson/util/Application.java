@@ -113,7 +113,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		<code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
 	*/
-	protected File getConfigurationDirectory() throws SecurityException
+	public File getConfigurationDirectory() throws SecurityException
 	{
 		return new File(System.getProperty(SystemConstants.USER_HOME_PROPERTY), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
 	}
@@ -125,7 +125,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		<code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
 	*/
-	protected File getConfigurationFile() throws SecurityException
+	public File getConfigurationFile() throws SecurityException
 	{
 		return new File(getConfigurationDirectory(), CONFIGURATION_FILENAME);	//return the configuratoin file inside the configuration directory		
 	}
