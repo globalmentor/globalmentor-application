@@ -1,6 +1,7 @@
 package com.garretwilson.util;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
@@ -10,6 +11,8 @@ import com.garretwilson.rdf.dublincore.DCUtilities;
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the
 	implementing application class.</p>
+<p>If a configuration is provided via <code>setConfiguration()</code>, that
+	configuration is automatically loaded and saved.</p>
 @author Garret Wilson
 */
 public abstract class Application extends DefaultRDFResource 
@@ -65,6 +68,18 @@ public abstract class Application extends DefaultRDFResource
 		return rdf;	//return the RDF data model
 	}
 
+	/**The application configuration, or <code>null</code> if there is no configuration.*/
+	private Configuration configuration=null;
+
+		/**@return The application configuration, or <code>null</code> if there is no configuration.*/
+		public Configuration getConfiguration() {return configuration;}
+
+		/**Sets the application configuration.
+		@param config The application configuration, or <code>null</code> if there
+			should be no configuration.
+		*/
+		protected void setConfiguration(final Configuration config) {configuration=config;}
+
 	/**Reference URI constructor.
 	@param referenceURI The reference URI of the application.
 	*/
@@ -81,6 +96,19 @@ public abstract class Application extends DefaultRDFResource
 	{
 		super(referenceURI);	//construct the parent class
 		this.args=args;	//save the arguments
+	}
+
+	/**Initializes the application.
+	This method is called after construction but before application execution.
+	This version loads the configuration information, if it exists.
+	@exception Exception Thrown if anything goes wrong.
+	*/
+	public void initialize() throws Exception	//TODO create a flag that only allows initialization once
+	{
+		if(getConfiguration()!=null && getConfiguration().exists())	//if there is application configuration information
+		{
+			getConfiguration().retrieve();	//retrieve the configuration information
+		}		
 	}
 
 	/**The main application method.
@@ -110,6 +138,45 @@ public abstract class Application extends DefaultRDFResource
 		}
 		return true;	//show that everything went OK
 	}
+
+	/**Stores the configuration if it has been modified.
+	If there is no configuration, no action is taken.
+	If an error occurs, the user is notified.
+	@return <code>false</code> if there was an error storing the configuration,
+		else <code>true</code>.
+	*/
+/*G***del if not needed
+	public boolean storeConfiguration()
+	{
+			//if there is configuration information and it has been modified
+		if(getConfiguration()!=null && getConfiguration().isModified())
+		{
+			try
+			{
+				getConfiguration().store();	//try to store the configuration information
+			}
+			catch(IOException ioException)	//if there is an error saving the configuration
+			{
+				displayError(this, ioException);	//alert the user of the error
+					//ask if we can close even though we can't save the configuration information
+				canClose=JOptionPane.showConfirmDialog(this,
+					"Unable to save configuration information; are you sure you want to close?",
+					"Unable to save configuration", JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION;	//G***i18n
+			}
+		}
+
+		try
+		{
+			getMarmotConfiguration().store();	//store the configuration information
+			return true;	//show that saving was successful
+		}
+		catch(IOException ioException)	//if there is an error storing the configuration
+		{
+			Debug.error(ioException);	//G***fix
+			return false;	//show that we were unable to save the configuration
+		}
+	}
+*/
 
 	/**Displays an error message to the user for an exception.
 	@param throwable The condition that caused the error.
@@ -159,6 +226,7 @@ public abstract class Application extends DefaultRDFResource
 		try
 		{
 			initialize(application, args);	//initialize the environment
+			application.initialize();	//initialize the application
 			if(!application.canStart())	//perform the pre-run checks; if something went wrong, exit
 				return -1;	//show that there was a problem
 			return application.main();	//run the application
@@ -173,7 +241,7 @@ public abstract class Application extends DefaultRDFResource
 	/**Initializes the environment for the application.
 	@param application The application to start. 
 	@param args The command line arguments.
-	@exception Thrown if anything goes wrong.
+	@exception Exception Thrown if anything goes wrong.
 	*/
 	protected static void initialize(final Application application, final String[] args) throws Exception
 	{
@@ -188,5 +256,32 @@ public abstract class Application extends DefaultRDFResource
 	{
 		Debug.error(throwable); //report the error
 	}
-*/	
+*/
+
+	/**Application configuration information.*/
+	public interface Configuration extends Modifiable
+	{
+
+		/**Checks to see if the configuration information exists.
+		@return <code>true</code> if the configuration information exists,
+			else <code>false</code> if configuration information is not available.
+		@exception IOException Thrown if there is a problem determining if the information exists.
+		*/
+		public boolean exists() throws IOException;
+
+		/**Stores the configuration.
+		<p>After this method, the <code>modified</code> bound property will be
+			<code>false</code>.</p>
+		@exception IOException Thrown if there is a problem storing the information.
+		*/
+		public void store() throws IOException;
+
+		/**Retrieves the configuration.
+		<p>After this method, the <code>modified</code> bound property will be
+			<code>false</code>.</p>
+		@exception IOException Thrown if there is a problem retrieving the information.
+		*/
+		public void retrieve() throws IOException;
+
+	}
 }
