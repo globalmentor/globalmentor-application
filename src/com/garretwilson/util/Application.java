@@ -6,6 +6,8 @@ import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
+import static com.garretwilson.io.FileConstants.*;
+import static com.garretwilson.io.FileUtilities.*;
 import com.garretwilson.lang.*;
 import com.garretwilson.net.Authenticable;
 import com.garretwilson.net.http.HTTPClient;
@@ -131,29 +133,26 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 		protected void setConfigurationDirectoryName(final String configurationDirectoryName) {this.configurationDirectoryName=configurationDirectoryName;}
 
 	/**@return The configuration directory for the application.
+	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
+		access to the user home system property.
 	@see SystemConstants#USER_HOME_PROPERTY
 	@see #getConfigurationDirectoryName()
-	@exception SecurityException if a security manager exists and its
-		<code>checkPropertyAccess</code> method doesn't allow
-		access to the user home system property.
 	*/
 	public File getConfigurationDirectory() throws SecurityException
 	{
 		return new File(System.getProperty(SystemConstants.USER_HOME_PROPERTY), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
 	}
 
-	/**@return An object representing the file containing the configuration
-	information.
-	@see #getConfigurationDirectory()
-	@exception SecurityException if a security manager exists and its
-		<code>checkPropertyAccess</code> method doesn't allow
+	/**@return An object representing the file containing the configuration information.
+	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
+	@see #getConfigurationDirectory()
 	*/
 	public File getConfigurationFile() throws SecurityException
 	{
-		return new File(getConfigurationDirectory(), CONFIGURATION_FILENAME);	//return the configuratoin file inside the configuration directory		
+		return new File(getConfigurationDirectory(), CONFIGURATION_FILENAME);	//return the configuration file inside the configuration directory		
 	}
-
+	
 	/**The application configuration, or <code>null</code> if there is no configuration.*/
 //G***del when works	private Configuration configuration=null;
 
@@ -213,6 +212,41 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 			there should be no configuration.
 		*/
 //G***del		protected void setConfigurationStorage(final ModelStorage storage) {configurationStorage=storage;}
+
+		/**The name of the properties file, or <code>null</code> if the default should be used.*/
+//TODO del		private String propertiesFileName=null;
+
+			/**@return The name of the properties file. If no properties file
+			 	name has been assigned, a default is returned constructed from the
+			 	local name of the application class in lowercase with an extension of "properties".
+			*/
+/*TODO del
+			protected String getPropertiesFileName()
+			{
+				return propertiesFileName!=null	//if a properties file name has been assigned
+						? propertiesFileName	//return the properties file name
+						: addExtension(ClassUtilities.getLocalName(getClass()).toLowerCase(), PROPERTIES_EXTENSION);	//otherwise, return "applicationname.properties"
+			}
+*/
+			
+			/**Sets the name of the properties file.
+			@param propertiesFileName The name of the properties file,
+				or <code>null</code> if the default should be used.
+			*/
+//TODO del			protected void setPropertiesFileName(final String propertiesFileName) {this.propertiesFileName=propertiesFileName;}
+
+	/**@return An object representing the file containing the properties information.
+	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
+		access to the user home system property.
+	@see #getConfigurationDirectory()
+	@see #getPropertiesFileName()
+	*/
+/*TODO del
+	public File getPropertiesFile() throws SecurityException
+	{
+		return new File(getConfigurationDirectory(), getPropertiesFileName());	//return the properties file inside the configuration directory		
+	}
+*/
 
 	/**Reference URI constructor.
 	@param referenceURI The reference URI of the application.
@@ -390,7 +424,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	@param args The command line arguments.
 	@return The application status.
 	*/
-	public static int run(final Application application, final String[] args)
+	public static <C> int run(final Application<C> application, final String[] args)
 	{
 		int result=0;	//start out assuming a neutral result TODO use a constant and a unique value
 		try
