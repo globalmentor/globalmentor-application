@@ -3,14 +3,23 @@ package com.garretwilson.util;
 import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.*;
+import java.util.prefs.Preferences;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
 
 /**An application that by default is a console application.
+<p>Every application provides a default preference node based upon the
+	implementing application class.</p>
 @author Garret Wilson
 */
-public class Application extends DefaultRDFResource 
+public abstract class Application extends DefaultRDFResource 
 {
+
+	/**@return The default user preferences for this frame.*/
+	public Preferences getPreferences()
+	{
+		return Preferences.userNodeForPackage(getClass());	//return the user preferences node for whatever class extends this one 
+	}
 
 	/**@return The title of the application, or <code>null</code> if there is no title.*/
 	public RDFObject getTitle()
