@@ -15,7 +15,16 @@ import com.garretwilson.rdf.dublincore.DCUtilities;
 public abstract class Application extends DefaultRDFResource 
 {
 
-	/**@return The default user preferences for this frame.*/
+	/**The command-line arguments of the application.*/
+	private final String[] args;
+
+		/**@return The command-line arguments of the application.*/
+		protected String[] getArgs() {return args;}
+
+	/**@return The default user preferences for this frame.
+	@exception SecurityException Thrown if a security manager is present and
+		it denies <code>RuntimePermission("preferences")</code>.
+	*/
 	public Preferences getPreferences()
 	{
 		return Preferences.userNodeForPackage(getClass());	//return the user preferences node for whatever class extends this one 
@@ -61,7 +70,17 @@ public abstract class Application extends DefaultRDFResource
 	*/
 	public Application(final URI referenceURI)
 	{
+		this(referenceURI, new String[]{});	//construct the class with no arguments
+	}
+
+	/**Reference URI and arguments constructor.
+	@param referenceURI The reference URI of the application.
+	@param args The command line arguments.
+	*/
+	public Application(final URI referenceURI, final String[] args)
+	{
 		super(referenceURI);	//construct the parent class
+		this.args=args;	//save the arguments
 	}
 
 	/**The main application method.
@@ -146,7 +165,7 @@ public abstract class Application extends DefaultRDFResource
 		}
 		catch(Throwable throwable)  //if there are any errors
 		{
-			error(throwable);	//report the error
+			application.displayError(throwable);	//report the error
 			return -1;	//show that there was an error
 		}
 	}
@@ -163,10 +182,11 @@ public abstract class Application extends DefaultRDFResource
 
 	/**Responds to a throwable error.
 	@param throwable The throwable object that caused the error 
-	 */
+	*/
+/*G***del if not needed
 	protected static void error(final Throwable throwable)
 	{
-		Debug.error(throwable); //report the error TODO fix with better reporting
+		Debug.error(throwable); //report the error
 	}
-	
+*/	
 }
