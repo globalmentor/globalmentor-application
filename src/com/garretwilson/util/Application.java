@@ -1,5 +1,6 @@
 package com.garretwilson.util;
 
+import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.*;
 import com.garretwilson.rdf.*;
@@ -81,13 +82,43 @@ public class Application extends DefaultRDFResource
 		}
 		return true;	//show that everything went OK
 	}
+
+	/**Displays an error message to the user for an exception.
+	@param throwable The condition that caused the error.
+	*/
+	public void displayError(final Throwable throwable)
+	{
+		Debug.trace(throwable);	//log the error
+		displayError(getDisplayErrorMessage(throwable));	//display an error to the user for the throwable
+	}
 	
 	/**Displays the given error to the user
-	@param errorString The error to display. 
+	@param message The error to display. 
 	*/
-	public void displayError(final String errorString)
+	public void displayError(final String message)
 	{
-		System.err.println(errorString);	//display the error in the error output
+		System.err.println(message);	//display the error in the error output
+	}
+
+	/**Constructs a user-presentable error message based on an exception.
+	In most cases this is <code>Throwable.getMessage()</code>.
+	@param throwable The condition that caused the error.
+	@see Throwable#getMessage()
+	*/
+	public static String getDisplayErrorMessage(final Throwable throwable)
+	{
+		if(throwable instanceof FileNotFoundException)	//if a file was not found
+		{
+			return "File not found: "+throwable.getMessage();	//create a message for a file not found G***i18n
+		}
+		else if(throwable instanceof sun.io.MalformedInputException)	//if there was an error converting characters; G***put this elsewhere, fix for non-Sun JVMs
+		{
+			return "Invalid character encountered for file encoding.";	//G***i18n
+		}
+		else  //for any another error
+		{
+			return throwable.getMessage()!=null ? throwable.getMessage() : throwable.getClass().getName();  //get the throwable message or, on last resource, the name of the class
+		}
 	}
 
 	/**Starts an application.
