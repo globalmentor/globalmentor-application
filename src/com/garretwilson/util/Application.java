@@ -8,7 +8,6 @@ import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
 import com.garretwilson.lang.*;
 import com.garretwilson.net.Authenticable;
-import com.garretwilson.net.SwingAuthenticator;
 import com.garretwilson.net.http.HTTPClient;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
@@ -24,6 +23,9 @@ import com.garretwilson.rdf.dublincore.DCUtilities;
 public abstract class Application<C> extends DefaultRDFResource implements Modifiable 
 {
 
+	/**An array containing no arguments.*/
+	protected final static String[] NO_ARGUMENTS=new String[0];
+	
 	/**The authenticator object used to retrieve client authentication.*/
 	private Authenticable authenticator=null;
 
@@ -217,7 +219,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	*/
 	public Application(final URI referenceURI)
 	{
-		this(referenceURI, new String[]{});	//construct the class with no arguments
+		this(referenceURI, NO_ARGUMENTS);	//construct the class with no arguments
 	}
 
 	/**Reference URI and arguments constructor.
@@ -390,19 +392,42 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	*/
 	public static int run(final Application application, final String[] args)
 	{
+		int result=0;	//start out assuming a neutral result TODO use a constant and a unique value
 		try
 		{
 			initialize(application, args);	//initialize the environment
 			application.initialize();	//initialize the application
-			if(!application.canStart())	//perform the pre-run checks; if something went wrong, exit
-				return -1;	//show that there was a problem
-			return application.main();	//run the application
+			if(application.canStart())	//perform the pre-run checks; if everything went OK
+			{
+				result=application.main();	//run the application
+			}
+			else	//if something went wrong
+			{
+				result=-1;	//show that we couldn't start TODO use a constant and a unique value
+			}
 		}
-		catch(Throwable throwable)  //if there are any errors
+		catch(final Throwable throwable)  //if there are any errors
 		{
+			result=-1;	//show that there was an error TODO use a constant and a unique value
 			application.displayError(throwable);	//report the error
-			return -1;	//show that there was an error
 		}
+		if(result<0)	//if we something went wrong, exit (if everything is going fine, keep running, because we may have a server or frame running)
+		{
+			try
+			{
+				application.exit(result);	//exit with the result (we can't just return, because the main frame, if initialized, will probably keep the thread from stopping)
+			}
+			catch(final Throwable throwable)  //if there are any errors
+			{
+				result=-1;	//show that there was an error during exit TODO use a constant and a unique value
+				application.displayError(throwable);	//report the error
+			}
+			finally
+			{
+				System.exit(result);	//provide a fail-safe way to exit		
+			}
+		}
+		return result;	//always return the result		
 	}
 
 	/**Initializes the environment for the application.
@@ -460,20 +485,41 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	Convenience method which calls <code>exit(int)</code>.
 	@see #exit(int)
 	*/
-	public void exit()
+	public final void exit()
 	{
 		exit(0);	//exit with no status
 	}
 	
 	/**Exits the application with the given status.
+	This method first checks to see if exit can occur.
+	To add to exit functionality, <code>performExit()</code> should be overridden rather than this method.
 	@param status The exit status.
+	@see #canExit()
+	@see #performExit(int)
 	*/
-	public void exit(final int status)
+	public final void exit(final int status)
 	{
 		if(canExit())	//if we can exit
 		{
-			System.exit(status);	//close the program with the given exit status
+			try
+			{
+				performExit(status);	//perform the exit
+			}
+			catch(final Throwable throwable)  //if there are any errors
+			{
+				displayError(throwable);	//report the error
+			}			
+			System.exit(-1);	//provide a fail-safe way to exit, indicating an error occurred		
 		}
+	}
+
+	/**Exits the application with the given status without checking to see if exit should be performed.
+	@param status The exit status.	
+	@exception Exception Thrown if anything goes wrong.
+	*/
+	protected void performExit(final int status) throws Exception
+	{
+		System.exit(status);	//close the program with the given exit status		
 	}
 
 	/**@return Whether the object been modified.*/
