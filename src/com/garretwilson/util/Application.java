@@ -7,8 +7,6 @@ import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
 import com.garretwilson.lang.*;
-import com.garretwilson.model.Model;
-import com.garretwilson.model.ModelIOKit;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
 
@@ -17,9 +15,10 @@ import com.garretwilson.rdf.dublincore.DCUtilities;
 	implementing application class.</p>
 <p>If a configuration is provided via <code>setConfiguration()</code>, that
 	configuration is automatically loaded and saved.</p>
+@param <C> The type of configuration object.
 @author Garret Wilson
 */
-public abstract class Application extends DefaultRDFResource implements Modifiable 
+public abstract class Application<C> extends DefaultRDFResource implements Modifiable 
 {
 
 	/**Whether the object has been modified; the default is not modified.*/
@@ -143,16 +142,16 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 //G***del when works		protected void setConfiguration(final Configuration config) {configuration=config;}
 
 	/**The application configuration, or <code>null</code> if there is no configuration.*/
-	private Model configuration=null;
+	private C configuration=null;
 
 		/**@return The application configuration, or <code>null</code> if there is no configuration.*/
-		public Model getConfiguration() {return configuration;}
+		public C getConfiguration() {return configuration;}
 
 		/**Sets the application configuration.
 		@param config The application configuration, or <code>null</code> if there
 			should be no configuration.
 		*/
-		private void setConfiguration(final Model config) {configuration=config;}
+		private void setConfiguration(final C config) {configuration=config;}
 
 	/**The configuration strategy, or <code>null</code> if there is no configuration storage.*/
 //G***del	private ConfigurationStrategy configurationStrategy=null;
@@ -167,16 +166,16 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 //G***del		protected void setConfigurationStrategy(final ConfigurationStrategy strategy) {configurationStrategy=strategy;}
 
 	/**The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-	private ModelIOKit configurationIOKit=null;
+	private IOKit<C> configurationIOKit=null;
 
 		/**@return The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-		public ModelIOKit getConfigurationIOKit() {return configurationIOKit;}
+		public IOKit<C> getConfigurationIOKit() {return configurationIOKit;}
 
 		/**Sets the configuration storage I/O kit.
 		@param ioKit The configuration storage I/O kit, or <code>null</code> if
 			there should be no configuration.
 		*/
-		protected void setConfigurationIOKit(final ModelIOKit ioKit) {configurationIOKit=ioKit;}
+		protected void setConfigurationIOKit(final IOKit<C> ioKit) {configurationIOKit=ioKit;}
 
 	/**The configuration storage strategy, or <code>null</code> if there is no configuration storage.*/
 //G***del	private ModelStorage configurationStorage=null;
@@ -218,7 +217,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 		loadConfiguration();	//load the configuration
 		if(getConfiguration()==null)	//if we were unable to load the configuration
 		{
-			final Model configuration=createDefaultConfiguration();	//create a default configuration
+			final C configuration=createDefaultConfiguration();	//create a default configuration
 			if(configuration!=null)	//if we created a default configuration
 			{
 				setConfiguration(configuration);	//set the configuration
@@ -259,7 +258,7 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	@return A default configuration, or <code>null</code> if the application
 		does not need a configuration.
 	*/
-	protected Model createDefaultConfiguration()
+	protected C createDefaultConfiguration()
 	{
 		return null;	//this version doesn't create a configuration
 	}
@@ -269,10 +268,10 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	*/
 	protected void loadConfiguration() throws IOException
 	{
-		final ModelIOKit configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
+		final IOKit<C> configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
 		if(configurationIOKit!=null)	//if we can load application configuration information
 		{
-			Model configuration=null;	//we'll try to get the configuration from somewhere
+			C configuration=null;	//we'll try to get the configuration from somewhere
 			try
 			{
 				final File configurationFile=getConfigurationFile();	//get the configuration file
@@ -295,8 +294,8 @@ public abstract class Application extends DefaultRDFResource implements Modifiab
 	*/
 	public void saveConfiguration() throws IOException
 	{
-		final ModelIOKit configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
-		final Model configuration=getConfiguration();	//get the configuration
+		final IOKit<C> configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
+		final C configuration=getConfiguration();	//get the configuration
 		if(configurationIOKit!=null && configuration!=null)	//if we can save application configuration information, and there is configuration information to save
 		{
 			try
