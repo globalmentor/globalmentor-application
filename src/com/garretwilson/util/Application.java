@@ -206,10 +206,12 @@ public abstract class Application extends DefaultRDFResource
 		{
 			return "File not found: "+throwable.getMessage();	//create a message for a file not found G***i18n
 		}
+/*TODO this throws a security exception with Java WebStart; see if it's even needed anymore
 		else if(throwable instanceof sun.io.MalformedInputException)	//if there was an error converting characters; G***put this elsewhere, fix for non-Sun JVMs
 		{
 			return "Invalid character encountered for file encoding.";	//G***i18n
 		}
+*/
 		else  //for any another error
 		{
 			return throwable.getMessage()!=null ? throwable.getMessage() : throwable.getClass().getName();  //get the throwable message or, on last resource, the name of the class
