@@ -1,13 +1,10 @@
 package com.garretwilson.util;
 
-import java.beans.*;
 import java.io.*;
 import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
-import static com.garretwilson.io.FileConstants.*;
-import static com.garretwilson.io.FileUtilities.*;
 import com.garretwilson.lang.*;
 import com.garretwilson.net.Authenticable;
 import com.garretwilson.net.http.HTTPClient;
@@ -50,14 +47,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	
 	/**Whether the object has been modified; the default is not modified.*/
 	private boolean modified=false;
-
-	/**Keeps track of <code>PropertyChangeListener</code>s that have been
-		registered, and handles firing of events.
-	@see #addPropertyChangeListener
-	@see #removePropertyChangeListener
-	@see #firePropertyChange
-	*/
-	private PropertyChangeSupport propertyChangeSupport=null;
 
 	/**The filename of the configuration file.*/
 	public final static String CONFIGURATION_FILENAME="configuration.rdf";
@@ -572,83 +561,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 				//show that the modified property has changed
 			firePropertyChange(MODIFIED_PROPERTY, Boolean.valueOf(oldModified), Boolean.valueOf(newModified));
 		}
-	}
-
-	/**Adds a property change listener to the listener list.
-		The listener is registered for all properties.
-		<p>If the listener is <code>null</code>, no exception is thrown and no action
-		is performed.</p>
-	@param listener The <code>PropertyChangeListener</code> to be added.
-	@see PropertyChangeEvent
-	*/
-	public synchronized void addPropertyChangeListener(final PropertyChangeListener listener)
-	{
-		if(listener==null)  //if no listener was provided
-		  return; //don't do anything
-		if(propertyChangeSupport==null) //if no property change support has been created
-			propertyChangeSupport=new PropertyChangeSupport(this);  //create new property change support
-		propertyChangeSupport.addPropertyChangeListener(listener); //add the property change listener to our change support
-	}
-
-	/**Remove a property change listener from the listener list.
-		This removes a <code>PropertyChangeListener</code> that was registered for
-		all properties.
-		<p>If the listener is <code>null</code>, no exception is thrown and no action
-		is performed.</p>
-	@param listener The <code>PropertyChangeListener</code> to be removed.
-	*/
-	public synchronized void removePropertyChangeListener(final PropertyChangeListener listener)
-	{
-		if(listener==null)  //if no listener was provided
-		  return; //don't do anything
-		if(propertyChangeSupport!=null) //if we have property change support (if not, no listeners could have been added)
-		  propertyChangeSupport.removePropertyChangeListener(listener);  //remove the property change listener from our change support
-	}
-
-	/**Add a property change listener for a specific property.
-		The listener will be invoked only when a call to
-		<code>firePropertyChange()</code> names that specific property.
-		<p>If the listener is <code>null</code>, no exception is thrown and no action
-		is performed.</p>
-	@param propertyName The name of the property to listen on.
-	@param listener The <code>PropertyChangeListener</code> to be added.
-	*/
-	public synchronized void addPropertyChangeListener(final String propertyName, final PropertyChangeListener listener)
-	{
-		if(listener==null)  //if no listener was provided
-		  return; //don't do anything
-		if(propertyChangeSupport==null) //if no property change support has been created
-			propertyChangeSupport=new PropertyChangeSupport(this);  //create new property change support
-		propertyChangeSupport.addPropertyChangeListener(propertyName, listener); //add the property change listener to our change support, listening for the specified property
-	}
-
-	/**Remove a property change listener for a specific property.
-		<p>If the listener is <code>null</code>, no exception is thrown and no
-		action is performed.</p>
-	@param propertyName The name of the property that was listened on.
-	@param listener The <code>PropertyChangeListener</code> to be removed
-	*/
-	public synchronized void removePropertyChangeListener(final String propertyName, final PropertyChangeListener listener)
-	{
-		if(listener==null)  //if no listener was provided
-		  return; //don't do anything
-		if(propertyChangeSupport!=null) //if we have property change support (if not, no listeners could have been added)
-			propertyChangeSupport.removePropertyChangeListener(propertyName, listener);  //remove the property change listener that was listening to a specified property from our change support
-	}
-
-	/**Reports that a bound property has changed. This method can be called
-		when a bound property has changed and it will send the appropriate
-		property change event to any registered property change listeners.
-	@param propertyName The name of the property being changed.
-	@param oldValue The old property value.
-	@param newValue The new property value.
-	@see PropertyChangeEvent
-	@see PropertyChangeListener
-	*/
-	protected void firePropertyChange(final String propertyName, Object oldValue, final Object newValue)
-	{
-		if(propertyChangeSupport!=null) //if we have property change support (if not, no listeners could have been added so there would be no reason to fire change events)
-			propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue);  //let the change support fire the property change
 	}
 
 }
