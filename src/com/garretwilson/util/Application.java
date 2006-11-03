@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
 import com.garretwilson.lang.*;
+import static com.garretwilson.lang.SystemUtilities.*;
 import com.garretwilson.net.Authenticable;
 import com.garretwilson.net.http.HTTPClient;
 import com.garretwilson.rdf.*;
@@ -124,12 +125,12 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	/**@return The configuration directory for the application.
 	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
 		access to the user home system property.
-	@see SystemConstants#USER_HOME_PROPERTY
+	@see SystemUtilities#getUserHomeDirectory()
 	@see #getConfigurationDirectoryName()
 	*/
 	public File getConfigurationDirectory() throws SecurityException
 	{
-		return new File(System.getProperty(SystemConstants.USER_HOME_PROPERTY), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
+		return new File(getUserHomeDirectory(), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
 	}
 
 	/**@return An object representing the file containing the configuration information.
