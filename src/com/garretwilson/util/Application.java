@@ -461,7 +461,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	*/
 	protected static void initialize(final Application application, final String[] args) throws Exception
 	{
-		CommandLineArgumentUtilities.configureDebug(args, Debug.getDebug()); //configure debugging based upon the command line arguments
+		CommandLineArgumentUtilities.configureDebug(args); //configure debugging based upon the command line arguments
 	}
 
 	/**Responds to a throwable error.
