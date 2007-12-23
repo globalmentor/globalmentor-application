@@ -324,7 +324,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 			try
 			{
 				final File configurationFile=getConfigurationFile();	//get the configuration file
-				if(FileUtilities.checkExists(configurationFile))	//if there is a configuration file (or a backup configuration file)
+				if(Files.checkExists(configurationFile))	//if there is a configuration file (or a backup configuration file)
 				{
 					configuration=configurationIOKit.load(configurationFile.toURI());	//ask the I/O kit to load the configuration file
 				}
@@ -353,13 +353,13 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 				final File configurationDirectory=configurationFile.getParentFile();	//get the directory of the file
 				if(!configurationDirectory.exists() || !configurationDirectory.isDirectory())	//if the directory doesn't exist as a directory
 				{
-					FileUtilities.mkdirs(configurationDirectory);	//create the directory
+					Files.mkdirs(configurationDirectory);	//create the directory
 				}
-				final File tempFile=FileUtilities.getTempFile(configurationFile);  //get a temporary file to write to
+				final File tempFile=Files.getTempFile(configurationFile);  //get a temporary file to write to
 
-				final File backupFile=FileUtilities.getBackupFile(configurationFile);  //get a backup file
+				final File backupFile=Files.getBackupFile(configurationFile);  //get a backup file
 				configurationIOKit.save(configuration, tempFile.toURI());	//ask the I/O kit to save the configuration to the temporary file
-				FileUtilities.moveFile(tempFile, configurationFile, backupFile); //move the temp file to the normal file, creating a backup if necessary
+				Files.moveFile(tempFile, configurationFile, backupFile); //move the temp file to the normal file, creating a backup if necessary
 				setModified(false);	//the application has not been modified, as its configuration has just been saved
 			}
 			catch(SecurityException securityException)	//if we can't access the configuration file
