@@ -5,12 +5,14 @@ import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 import com.garretwilson.io.*;
-import com.garretwilson.lang.*;
-import static com.garretwilson.lang.SystemUtilities.*;
+
+import static com.globalmentor.java.SystemUtilities.*;
+
 import com.garretwilson.net.Authenticable;
 import com.garretwilson.net.http.HTTPClient;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
+import com.globalmentor.java.*;
 
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the
