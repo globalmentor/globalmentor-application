@@ -115,7 +115,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 		{
 			return configurationDirectoryName!=null	//if a configuration directory name has been assigned
 					? configurationDirectoryName	//return the configuration directory name
-					: String.valueOf(FileConstants.EXTENSION_SEPARATOR)+ClassUtilities.getLocalName(getClass()).toLowerCase();	//otherwise, return ".applicationname"
+					: String.valueOf(FileConstants.EXTENSION_SEPARATOR)+Classes.getLocalName(getClass()).toLowerCase();	//otherwise, return ".applicationname"
 		}
 		
 		/**Sets the name of the configuration directory.
