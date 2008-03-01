@@ -20,7 +20,6 @@ import java.io.*;
 import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
-import com.garretwilson.io.*;
 
 import static com.globalmentor.java.SystemUtilities.*;
 
@@ -28,6 +27,7 @@ import com.garretwilson.net.Authenticable;
 import com.garretwilson.net.http.HTTPClient;
 import com.garretwilson.rdf.*;
 import com.garretwilson.rdf.dublincore.DCUtilities;
+import com.globalmentor.io.*;
 import com.globalmentor.java.*;
 
 /**An application that by default is a console application.
