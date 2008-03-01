@@ -1,4 +1,20 @@
-package com.garretwilson.util;
+/*
+ * Copyright © 1996-2008 GlobalMentor, Inc. <http://www.globalmentor.com/>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.globalmentor.util;
 
 import java.io.*;
 import java.net.URI;
@@ -22,7 +38,7 @@ import com.globalmentor.java.*;
 @param <C> The type of configuration object.
 @author Garret Wilson
 */
-public abstract class Application<C> extends DefaultRDFResource implements Modifiable 
+public abstract class Application<C> extends DefaultRDFResource implements Modifiable	//TODO remove RDF support; maybe replace with JSR 296
 {
 
 	/**An array containing no arguments.*/
@@ -193,52 +209,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 		*/
 		protected void setConfigurationIOKit(final IOKit<C> ioKit) {configurationIOKit=ioKit;}
 
-	/**The configuration storage strategy, or <code>null</code> if there is no configuration storage.*/
-//G***del	private ModelStorage configurationStorage=null;
-
-		/**@return The configuration storage strategy, or <code>null</code> if there is no configuration storage.*/
-//G***del		public ModelStorage getConfigurationStorage() {return configurationStorage;}
-
-		/**Sets the configuration storage strategy.
-		@param storage The configuration storage strategy, or <code>null</code> if
-			there should be no configuration.
-		*/
-//G***del		protected void setConfigurationStorage(final ModelStorage storage) {configurationStorage=storage;}
-
-		/**The name of the properties file, or <code>null</code> if the default should be used.*/
-//TODO del		private String propertiesFileName=null;
-
-			/**@return The name of the properties file. If no properties file
-			 	name has been assigned, a default is returned constructed from the
-			 	local name of the application class in lowercase with an extension of "properties".
-			*/
-/*TODO del
-			protected String getPropertiesFileName()
-			{
-				return propertiesFileName!=null	//if a properties file name has been assigned
-						? propertiesFileName	//return the properties file name
-						: addExtension(ClassUtilities.getLocalName(getClass()).toLowerCase(), PROPERTIES_EXTENSION);	//otherwise, return "applicationname.properties"
-			}
-*/
-			
-			/**Sets the name of the properties file.
-			@param propertiesFileName The name of the properties file,
-				or <code>null</code> if the default should be used.
-			*/
-//TODO del			protected void setPropertiesFileName(final String propertiesFileName) {this.propertiesFileName=propertiesFileName;}
-
-	/**@return An object representing the file containing the properties information.
-	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
-		access to the user home system property.
-	@see #getConfigurationDirectory()
-	@see #getPropertiesFileName()
-	*/
-/*TODO del
-	public File getPropertiesFile() throws SecurityException
-	{
-		return new File(getConfigurationDirectory(), getPropertiesFileName());	//return the properties file inside the configuration directory		
-	}
-*/
 
 	/**Reference URI constructor.
 	@param referenceURI The reference URI of the application.
@@ -463,7 +433,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	*/
 	protected static void initialize(final Application application, final String[] args) throws Exception
 	{
-		CommandLineArgumentUtilities.configureDebug(args); //configure debugging based upon the command line arguments
+		CommandLineArguments.configureDebug(args); //configure debugging based upon the command line arguments
 	}
 
 	/**Responds to a throwable error.
