@@ -28,7 +28,7 @@ import com.globalmentor.java.*;
 import com.globalmentor.net.Authenticable;
 import com.globalmentor.net.http.HTTPClient;
 import com.globalmentor.rdf.*;
-import com.globalmentor.rdf.dublincore.DCUtilities;
+import com.globalmentor.rdf.dublincore.RDFDublinCore;
 
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the
@@ -88,7 +88,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	/**@return The title of the application, or <code>null</code> if there is no title.*/
 	public RDFObject getTitle()
 	{
-		return DCUtilities.getTitle(this);	//return the title object if there is one
+		return RDFDublinCore.getTitle(this);	//return the title object if there is one
 	}
 
 	/**The expiration date of the application, or <code>null</code> if there is
