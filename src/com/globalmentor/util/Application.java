@@ -23,12 +23,12 @@ import java.util.prefs.Preferences;
 
 import static com.globalmentor.java.SystemUtilities.*;
 
-import com.garretwilson.rdf.*;
-import com.garretwilson.rdf.dublincore.DCUtilities;
 import com.globalmentor.io.*;
 import com.globalmentor.java.*;
 import com.globalmentor.net.Authenticable;
 import com.globalmentor.net.http.HTTPClient;
+import com.globalmentor.rdf.*;
+import com.globalmentor.rdf.dublincore.DCUtilities;
 
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the
