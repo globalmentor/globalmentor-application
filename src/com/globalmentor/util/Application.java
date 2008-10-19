@@ -21,11 +21,7 @@ import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 
-import static com.globalmentor.java.SystemUtilities.*;
-
-import com.globalmentor.io.*;
-import com.globalmentor.java.*;
-import com.globalmentor.net.Authenticable;
+import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
 import com.globalmentor.rdf.*;
 import com.globalmentor.rdf.dublincore.RDFDublinCore;
@@ -33,12 +29,9 @@ import com.globalmentor.rdf.dublincore.RDFDublinCore;
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the
 	implementing application class.</p>
-<p>If a configuration is provided via <code>setConfiguration()</code>, that
-	configuration is automatically loaded and saved.</p>
-@param <C> The type of configuration object.
 @author Garret Wilson
 */
-public abstract class Application<C> extends DefaultRDFResource implements Modifiable	//TODO remove RDF support; maybe replace with JSR 296
+public abstract class Application extends DefaultRDFResource
 {
 
 	/**An array containing no arguments.*/
@@ -67,16 +60,13 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	/**Whether the object has been modified; the default is not modified.*/
 	private boolean modified=false;
 
-	/**The filename of the configuration file.*/
-	public final static String CONFIGURATION_FILENAME="configuration.rdf";
-
 	/**The command-line arguments of the application.*/
 	private final String[] args;
 
 		/**@return The command-line arguments of the application.*/
 		public String[] getArgs() {return args;}
 
-	/**@return The default user preferences for this frame.
+	/**@return The default user preferences for this application.
 	@exception SecurityException Thrown if a security manager is present and
 		it denies <code>RuntimePermission("preferences")</code>.
 	*/
@@ -120,96 +110,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 		return rdf;	//return the RDF data model
 	}
 
-	/**The name of the configuration directory, or <code>null</code> if the default should be used.*/
-	private String configurationDirectoryName=null;
-
-		/**@return The name of the configuration directory. If no configuration
-		 * directory has been assigned, a default is returned constructed from the
-		 * local name of the application class in lowercase, preceded by a full
-		 * stop character ('.').*/
-		protected String getConfigurationDirectoryName()
-		{
-			return configurationDirectoryName!=null	//if a configuration directory name has been assigned
-					? configurationDirectoryName	//return the configuration directory name
-					: String.valueOf(FileConstants.EXTENSION_SEPARATOR)+Classes.getLocalName(getClass()).toLowerCase();	//otherwise, return ".applicationname"
-		}
-		
-		/**Sets the name of the configuration directory.
-		@param configurationDirectoryName The name of the configuration directory,
-			or <code>null</code> if the default should be used.
-		*/
-		protected void setConfigurationDirectoryName(final String configurationDirectoryName) {this.configurationDirectoryName=configurationDirectoryName;}
-
-	/**@return The configuration directory for the application.
-	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
-		access to the user home system property.
-	@see SystemUtilities#getUserHomeDirectory()
-	@see #getConfigurationDirectoryName()
-	*/
-	public File getConfigurationDirectory() throws SecurityException
-	{
-		return new File(getUserHomeDirectory(), getConfigurationDirectoryName());	//return the configuration directory inside the user home directory
-	}
-
-	/**@return An object representing the file containing the configuration information.
-	@exception SecurityException if a security manager exists and its <code>checkPropertyAccess</code> method doesn't allow
-		access to the user home system property.
-	@see #getConfigurationDirectory()
-	*/
-	public File getConfigurationFile() throws SecurityException
-	{
-		return new File(getConfigurationDirectory(), CONFIGURATION_FILENAME);	//return the configuration file inside the configuration directory		
-	}
-	
-	/**The application configuration, or <code>null</code> if there is no configuration.*/
-//G***del when works	private Configuration configuration=null;
-
-		/**@return The application configuration, or <code>null</code> if there is no configuration.*/
-//G***del when works		public Configuration getConfiguration() {return configuration;}
-
-		/**Sets the application configuration.
-		@param config The application configuration, or <code>null</code> if there
-			should be no configuration.
-		*/
-//G***del when works		protected void setConfiguration(final Configuration config) {configuration=config;}
-
-	/**The application configuration, or <code>null</code> if there is no configuration.*/
-	private C configuration=null;
-
-		/**@return The application configuration, or <code>null</code> if there is no configuration.*/
-		public C getConfiguration() {return configuration;}
-
-		/**Sets the application configuration.
-		@param config The application configuration, or <code>null</code> if there
-			should be no configuration.
-		*/
-		private void setConfiguration(final C config) {configuration=config;}
-
-	/**The configuration strategy, or <code>null</code> if there is no configuration storage.*/
-//G***del	private ConfigurationStrategy configurationStrategy=null;
-
-		/**@return The configuration strategy, or <code>null</code> if there is no configuration storage.*/
-//G***del		public ConfigurationStrategy getConfigurationStrategy() {return configurationStrategy;}
-
-		/**Sets the configuration strategy.
-		@param strategy The configuration strategy, or <code>null</code> if
-			there should be no configuration.
-		*/
-//G***del		protected void setConfigurationStrategy(final ConfigurationStrategy strategy) {configurationStrategy=strategy;}
-
-	/**The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-	private IOKit<C> configurationIOKit=null;
-
-		/**@return The configuration storage I/O kit, or <code>null</code> if there is no configuration storage.*/
-		public IOKit<C> getConfigurationIOKit() {return configurationIOKit;}
-
-		/**Sets the configuration storage I/O kit.
-		@param ioKit The configuration storage I/O kit, or <code>null</code> if
-			there should be no configuration.
-		*/
-		protected void setConfigurationIOKit(final IOKit<C> ioKit) {configurationIOKit=ioKit;}
-
-
 	/**Reference URI constructor.
 	@param referenceURI The reference URI of the application.
 	*/
@@ -230,20 +130,11 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 
 	/**Initializes the application.
 	This method is called after construction but before application execution.
-	This version loads the configuration information, if it exists.
+	This version does nothing.
 	@exception Exception Thrown if anything goes wrong.
 	*/
 	public void initialize() throws Exception	//TODO create a flag that only allows initialization once
 	{
-		loadConfiguration();	//load the configuration
-		if(getConfiguration()==null)	//if we were unable to load the configuration
-		{
-			final C configuration=createDefaultConfiguration();	//create a default configuration
-			if(configuration!=null)	//if we created a default configuration
-			{
-				setConfiguration(configuration);	//set the configuration
-			}
-		}
 	}
 
 	/**The main application method.
@@ -272,73 +163,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 			}
 		}
 		return true;	//show that everything went OK
-	}
-
-	/**Creates a default configuration if one cannot be loaded.
-	This version returns <code>null</code>.
-	@return A default configuration, or <code>null</code> if the application
-		does not need a configuration.
-	*/
-	protected C createDefaultConfiguration()
-	{
-		return null;	//this version doesn't create a configuration
-	}
-
-	/**Loads configuration information.
-	@throws IOException if there is an error loading the configuration information.
-	*/
-	protected void loadConfiguration() throws IOException
-	{
-		final IOKit<C> configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
-		if(configurationIOKit!=null)	//if we can load application configuration information
-		{
-			C configuration=null;	//we'll try to get the configuration from somewhere
-			try
-			{
-				final File configurationFile=getConfigurationFile();	//get the configuration file
-				if(Files.checkExists(configurationFile))	//if there is a configuration file (or a backup configuration file)
-				{
-					configuration=configurationIOKit.load(configurationFile.toURI());	//ask the I/O kit to load the configuration file
-				}
-			}
-			catch(SecurityException securityException)	//if we can't access the configuration file
-			{
-				Debug.warn(securityException);	//warn of the security problem			
-			}
-			setConfiguration(configuration);	//set the configuration to whatever we found
-			setModified(false);	//the application has not been modified, as its configuration has just been loaded
-		}
-	}
-
-	/**Saves the configuration.
-	@throws IOException if there is an error saving the configuration information.
-	*/
-	public void saveConfiguration() throws IOException
-	{
-		final IOKit<C> configurationIOKit=getConfigurationIOKit();	//see if we can access the configuration
-		final C configuration=getConfiguration();	//get the configuration
-		if(configurationIOKit!=null && configuration!=null)	//if we can save application configuration information, and there is configuration information to save
-		{
-			try
-			{
-				final File configurationFile=getConfigurationFile();	//get the configuration file
-				final File configurationDirectory=configurationFile.getParentFile();	//get the directory of the file
-				if(!configurationDirectory.exists() || !configurationDirectory.isDirectory())	//if the directory doesn't exist as a directory
-				{
-					Files.mkdirs(configurationDirectory);	//create the directory
-				}
-				final File tempFile=Files.getTempFile(configurationFile);  //get a temporary file to write to
-
-				final File backupFile=Files.getBackupFile(configurationFile);  //get a backup file
-				configurationIOKit.save(configuration, tempFile.toURI());	//ask the I/O kit to save the configuration to the temporary file
-				Files.moveFile(tempFile, configurationFile, backupFile); //move the temp file to the normal file, creating a backup if necessary
-				setModified(false);	//the application has not been modified, as its configuration has just been saved
-			}
-			catch(SecurityException securityException)	//if we can't access the configuration file
-			{
-				Debug.warn(securityException);	//warn of the security problem			
-			}
-		}
 	}
 
 	/**Displays an error message to the user for an exception.
@@ -386,7 +210,7 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	@param args The command line arguments.
 	@return The application status.
 	*/
-	public static <C> int run(final Application<C> application, final String[] args)
+	public static int run(final Application application, final String[] args)
 	{
 		int result=0;	//start out assuming a neutral result TODO use a constant and a unique value
 		try
@@ -456,24 +280,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	*/
 	protected boolean canExit()
 	{
-			//if there is configuration information and it has been modified
-		if(isModified())	//if the application has been modified
-		{
-			try
-			{
-				saveConfiguration();	//save the configuration
-			}
-			catch(IOException ioException)	//if there is an error saving the configuration
-			{
-				displayError(ioException);	//alert the user of the error
-/*TODO fix for Swing
-					//ask if we can close even though we can't save the configuration information
-				canClose=JOptionPane.showConfirmDialog(this,
-					"Unable to save configuration information; are you sure you want to close?",
-					"Unable to save configuration", JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION;	//G***i18n
-*/
-			}
-		}
 		return true;	//show that we can exit
 	}
 
@@ -516,24 +322,6 @@ public abstract class Application<C> extends DefaultRDFResource implements Modif
 	protected void performExit(final int status) throws Exception
 	{
 		System.exit(status);	//close the program with the given exit status		
-	}
-
-	/**@return Whether the object been modified.*/
-	public boolean isModified() {return modified;}
-
-	/**Sets whether the object has been modified.
-	This is a bound property.
-	@param newModified The new modification status.
-	*/
-	public void setModified(final boolean newModified)
-	{
-		final boolean oldModified=modified; //get the old modified value
-		if(oldModified!=newModified)  //if the value is really changing
-		{
-			modified=newModified; //update the value
-				//show that the modified property has changed
-			firePropertyChange(MODIFIED_PROPERTY, Boolean.valueOf(oldModified), Boolean.valueOf(newModified));
-		}
 	}
 
 }
