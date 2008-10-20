@@ -86,7 +86,7 @@ public class CommandLineArguments
 	*/
 	public static boolean isDebug(final String[] argumentArray)
 	{
-		return hasSwitch(argumentArray, DEBUG_SWITCH);  //return whether the debug switch is defined
+		return hasParameter(argumentArray, DEBUG_SWITCH);  //return whether the debug switch is defined
 	}
 
 	/**Returns the value of the debug level.
@@ -117,7 +117,7 @@ public class CommandLineArguments
 	*/
 	public static boolean isDebugVisible(final String[] argumentArray)
 	{
-		return hasSwitch(argumentArray, DEBUG_VISIBLE_SWITCH);  //return whether the debug visible switch is defined
+		return hasParameter(argumentArray, DEBUG_VISIBLE_SWITCH);  //return whether the debug visible switch is defined
 	}
 
 	/**Returns the parameter of the file switch ("file").
@@ -140,8 +140,8 @@ public class CommandLineArguments
 	*/
 	public static boolean isHelp(final String[] argumentArray)
 	{
-		return hasSwitch(argumentArray, HELP_SWITCH) ||
-		  hasSwitch(argumentArray, QUESTION_SWITCH);  //return whether one of the debug switches is defined
+		return hasParameter(argumentArray, HELP_SWITCH) ||
+		  hasParameter(argumentArray, QUESTION_SWITCH);  //return whether one of the debug switches is defined
 	}
 
 	/**Returns the parameter of the log switch ("log").
@@ -162,7 +162,7 @@ public class CommandLineArguments
 	@param switchName The name of the argument which may be defined.
 	@return <code>true</code> if the argument is defined, else <code>false</code>.
 	*/
-	public static boolean hasSwitch(final String[] argumentArray, final String switchName)
+	public static boolean hasParameter(final String[] argumentArray, final String switchName)
 	{
 		for(int i=0; i<argumentArray.length; ++i)	//look at each of the arguments
 		{
