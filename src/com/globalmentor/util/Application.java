@@ -171,7 +171,7 @@ public abstract class Application extends DefaultURFResource
 	*/
 	public void displayError(final Throwable throwable)
 	{
-		Debug.trace(throwable);	//log the error
+		Debug.error(throwable);
 		displayError(getDisplayErrorMessage(throwable));	//display an error to the user for the throwable
 	}
 	
