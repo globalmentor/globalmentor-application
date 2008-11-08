@@ -175,16 +175,16 @@ public class CommandLineArguments
 		return false; //show that the flag wasn't defined
 	}
 
-	/**Searches the given arguments for the first occurrence of a particular option.
+	/**Searches the given arguments for the last occurrence of a particular option.
+	Using the last occurrence allows options to be appended to an existing batch or shell file on the command line and override the defaults.
 	@param arguments The array of command line arguments.
 	@param optionName The name of the option.
-	@return The argument of the first occurrence of the given option, or <code>null</code> if the option is not defined.
+	@return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
 	@see #OPTION_PATTERN
 	*/
 	public static String getOption(final String[] arguments, final String optionName)
 	{
-		final int argumentCount=arguments.length;
-		for(int i=0; i<argumentCount; ++i)	//look at each of the arguments
+		for(int i=arguments.length-1; i>=0; --i)	//look at each of the arguments in reverse order
 		{
 			final Matcher optionMatcher=OPTION_PATTERN.matcher(arguments[i]);	//try to match against this argumnet
 			if(optionMatcher.matches())	//if this is an argument
@@ -201,7 +201,7 @@ public class CommandLineArguments
 	/**Returns the given arguments for all occurrences a particular option.
 	@param arguments The array of command line arguments.
 	@param optionName The name of the option.
-	@return A non-<code>null</code> list of arguments of the defined options, if any.
+	@return A non-<code>null</code> list of arguments of the defined options, if any, in the order encountered.
 	@see #OPTION_PATTERN
 	*/
 	public static List<String> getOptions(final String[] arguments, final String optionName)
