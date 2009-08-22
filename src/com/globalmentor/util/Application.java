@@ -21,6 +21,7 @@ import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 
+import com.globalmentor.log.Log;
 import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
 import com.globalmentor.rdf.*;
@@ -171,7 +172,7 @@ public abstract class Application extends DefaultURFResource
 	*/
 	public void displayError(final Throwable throwable)
 	{
-		Debug.error(throwable);
+		Log.error(throwable);
 		displayError(getDisplayErrorMessage(throwable));	//display an error to the user for the throwable
 	}
 	
@@ -258,7 +259,7 @@ public abstract class Application extends DefaultURFResource
 	*/
 	protected static void initialize(final Application application, final String[] args) throws Exception
 	{
-		CommandLineArguments.configureDebug(args); //configure debugging based upon the command line arguments
+		CommandLineArguments.configureLog(args); //configure debugging based upon the command line arguments
 	}
 
 	/**Responds to a throwable error.
@@ -267,7 +268,7 @@ public abstract class Application extends DefaultURFResource
 /*G***del if not needed
 	protected static void error(final Throwable throwable)
 	{
-		Debug.error(throwable); //report the error
+		Log.error(throwable); //report the error
 	}
 */
 

@@ -20,7 +20,9 @@ import java.io.*;
 import java.util.*;
 import java.util.regex.*;
 
-import com.globalmentor.util.Debug;
+import com.globalmentor.java.Enums;
+import static com.globalmentor.java.Enums.*;
+import com.globalmentor.log.*;
 
 /**Constants and utilities for accessing command-line arguments.
 <p>This implementation recognizes two types of command-line <dfn>switches</dfn>: <dfn>options</dfn>, which have arguments, and <dfn>flags</dfn>, which do not.</p>
@@ -29,6 +31,21 @@ import com.globalmentor.util.Debug;
 */
 public class CommandLineArguments
 {
+
+	/**Common command-line parameters.*/
+	public enum Switch
+	{
+		/**Verbose output.*/
+		VERBOSE,
+		/**Quiet output.*/
+		QUIET,
+		/**The switch for help.*/
+		HELP,
+		/**The file to use for logging.*/
+		LOG_FILE,
+		/**The logging level.*/
+		LOG_LEVEL;
+	}
 
 	/**The long delimiter that introduces a switch.*/
 	public final static String LONG_SWITCH_DELIMITER="--";
@@ -42,118 +59,67 @@ public class CommandLineArguments
 	/**The pattern for matching options.*/
 	public final static Pattern OPTION_PATTERN=Pattern.compile("--([\\w-&&[^=]]+)=(.+)");
 
-	/**The debug flag, which turns on debug.
-	@see #LOG_OPTION
-	*/
-	public final static String DEBUG_FLAG="debug";
-
-	/**The debug level option, which is an integer representing the ORed levels of debugging that should be logged; should be used in conjuction with {@link #DEBUG_FLAG}.
-	@see #DEBUG_FLAG
-	*/
-	public final static String DEBUG_LEVEL_OPTION="level";
-
-	/**The debug visible flag, which turns on visible debugging; should be used in conjuction with {@link #DEBUG_FLAG}.
-	@see #DEBUG_FLAG
-	*/
-	public final static String DEBUG_VISIBLE_FLAG="visible";
-
-	/**The file option, which specifies an output file.*/
-	public final static String FILE_OPTION="file";
-
-	/**The help flag, which turns on help.*/
-	public final static String HELP_FLAG="help";
-
-	/**The log option, specifies a log file; should be used in conjuction with {@link #DEBUG_FLAG}.
-	@see #DEBUG_FLAG
-	*/
-	public final static String LOG_OPTION="log";
-
 	/**This class can only be instantiated if a class is derived from it.*/
 	protected CommandLineArguments() {}
 
-	/**Sets default program debugging based upon the presence of the "debug"
-		switch and the debug logging parameters.
-	@param argumentArray The array of command line arguments.
-	@exception IOException Thrown if a log file was specified but cannot be created or cannot be accessed.
-	@see #isDebug
-	@see #getLogParameter
-	*/
-	public static void configureDebug(final String[] argumentArray) throws IOException
-	{
-		Debug.setDebug(hasDebugFlag(argumentArray)); //turn debug on or off, based upon the arguments
-		final Debug.ReportLevel reportLevel=getDebugLevelOption(argumentArray);  //see what level is indicated
-		if(reportLevel!=null)  //if a valid report level is indicated
-			Debug.setMinimumReportLevel(reportLevel); //set the reporting level for debug logging
-		Debug.setVisible(hasDebugVisibleFlag(argumentArray)); //turn debug visibility on or off, based upon the arguments
-		final String logFilename=getLogOption(argumentArray);  //see if there is a log parameter
-		if(logFilename!=null) //if there is a log parameter specified, create a new file and specify our output should go there
-			Debug.setOutput(new File(logFilename));
-	}
-
-	/**Returns whether the debug flag {@link #DEBUG_FLAG} is turned on.
-	@param argumentArray The array of command line arguments.
-	@return <code>true</code> if the debug flag is defined.
-	@see #DEBUG_FLAG
-	*/
-	public static boolean hasDebugFlag(final String[] argumentArray)
-	{
-		return hasFlag(argumentArray, DEBUG_FLAG);  //return whether the debug switch is defined
-	}
-
-	/**Returns the value of the debug level option.
+	/**Sets default program debugging based upon the presence of the "log" flag and the logging switches.
 	@param arguments The array of command line arguments.
-	@return The minimum level specified by the debug level option, or <code>null</code> if the debug level is not specified.
-	@throws IllegalArgumentException if the given debug level option is invalid.
-	@see #DEBUG_LEVEL_OPTION
+	@see Switch#LOG_LEVEL
+	@see Switch#VERBOSE
+	@see Switch#QUIET
+	@see Switch#LOG_FILE
 	*/
-	public static Debug.ReportLevel getDebugLevelOption(final String[] arguments)
+	public static void configureLog(final String[] arguments)
 	{
-		final String levelString=getOption(arguments, DEBUG_LEVEL_OPTION);  //get the level as a string
-		if(levelString!=null) //if there is a level
+		final Log.Level logLevel;	//determine the log level
+		final String logLevelOption=getOption(arguments, Switch.LOG_LEVEL);	//get the log level, if any
+		if(logLevelOption!=null)	//if a specific log level was specified
 		{
-		  return Debug.ReportLevel.valueOf(levelString); //return the value
+			logLevel=Log.Level.valueOf(logLevelOption);
 		}
-		return null;  //show that we couldn't find a valid level
+		else	//see if a verbosity level was specified
+		{
+			if(hasFlag(arguments, Switch.VERBOSE))
+			{
+				logLevel=Log.Level.DEBUG;
+			}
+			else if(hasFlag(arguments, Switch.QUIET))
+			{
+				logLevel=Log.Level.WARN;
+			}
+			else
+			{
+				logLevel=Log.Level.INFO;
+			}
+		}
+		final String logFileOption=getOption(arguments, Switch.LOG_FILE);	//get the log file, if any
+		final File logFile=logFileOption!=null ? new File (logFileOption) : null;
+		Log.setDefaultConfiguration(new DefaultLogConfiguration(logFile, logLevel));	//set the default log configuration
 	}
 
-	/**Returns whether the visible debug switch {@value #DEBUG_VISIBLE_FLAG} is turned on.
-	@param arguments The array of command line arguments.
-	@return <code>true</code> if the visible switch is defined.
-	@see #DEBUG_VISIBLE_FLAG
-	*/
-	public static boolean hasDebugVisibleFlag(final String[] arguments)
-	{
-		return hasFlag(arguments, DEBUG_VISIBLE_FLAG);  //return whether the debug visible flag is defined
-	}
-
-	/**Returns the argument of the file option {@value #FILE_OPTION}.
-	@param arguments The array of command line arguments.
-	@return The argument if the file option is defined, else <code>null</code> if the option is not defined.
-	@see #FILE_OPTION
-	*/
-	public static String getFileOption(final String[] arguments)
-	{
-		return getOption(arguments, FILE_OPTION);  //return the argument of the file option
-	}
-
-	/**Returns whether the help flag {@value #HELP_FLAG} is turned on.
+	/**Returns whether the help flag is turned on.
 	@param arguments The array of command line arguments.
 	@return <code>true</code> if the help flag is defined.
-	@see #HELP_FLAG
+	@see Switch#HELP
 	*/
 	public static boolean hasHelpFlag(final String[] arguments)
 	{
-		return hasFlag(arguments, HELP_FLAG);  //return whether the help flag is defined
+		return hasFlag(arguments, Switch.HELP);  //return whether the help flag is defined
 	}
 
-	/**Returns the argument of the log option {@value #LOG_OPTION}.
+	/**Searches the argument array to see if a particular flag is defined.
+	<p>This implementation delegates to {@link #getFlag(String[], String)} using the serialization
+	form of the given enum.</p>
+	@param <F> The type of flag.
 	@param arguments The array of command line arguments.
-	@return The argument if the log option is defined, else <code>null</code> if the option is not defined.
-	@see #LOG_OPTION
+	@param flag The name of the flag which may be defined.
+	@return <code>true</code> if the flag is defined, else <code>false</code>.
+	@see Enums#getSerializationName(Enum)
+	@see #hasFlag(String[], String)
 	*/
-	public static String getLogOption(final String[] arguments)
+	public static <F extends Enum<F>> boolean hasFlag(final String[] arguments, final F flag)
 	{
-		return getOption(arguments, LOG_OPTION);  //return the argument of the log option
+		return hasFlag(arguments, getSerializationName(flag));
 	}
 
 	/**Searches the argument array to see if a particular flag is defined.
@@ -173,6 +139,22 @@ public class CommandLineArguments
 			}
 		}
 		return false; //show that the flag wasn't defined
+	}
+
+	/**Searches the given arguments for the last occurrence of a particular option.
+	Using the last occurrence allows options to be appended to an existing batch or shell file on the command line and override the defaults.
+	<p>This implementation delegates to {@link #getOption(String[], String)} using the serialization
+	form of the given enum.</p>
+	@param <O> The type of option.
+	@param arguments The array of command line arguments.
+	@param option The name of the option.
+	@return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
+	@see Enums#getSerializationName(Enum)
+	@see #getOption(String[], String)
+	*/
+	public static <O extends Enum<O>> String getOption(final String[] arguments, final O option)
+	{
+		return getOption(arguments, getSerializationName(option));
 	}
 
 	/**Searches the given arguments for the last occurrence of a particular option.
