@@ -71,13 +71,8 @@ public class CommandLineArguments
 	*/
 	public static void configureLog(final String[] arguments)
 	{
-		final Log.Level logLevel;	//determine the log level
-		final String logLevelOption=getOption(arguments, Switch.LOG_LEVEL);	//get the log level, if any
-		if(logLevelOption!=null)	//if a specific log level was specified
-		{
-			logLevel=Log.Level.valueOf(logLevelOption);
-		}
-		else	//see if a verbosity level was specified
+		Log.Level logLevel=getOption(arguments, Switch.LOG_LEVEL, Log.Level.class);	//get the explicit log level, if any
+		if(logLevel==null)	//if no specific log level was specified, see if a verbosity level was specified
 		{
 			if(hasFlag(arguments, Switch.VERBOSE))
 			{
@@ -143,6 +138,25 @@ public class CommandLineArguments
 
 	/**Searches the given arguments for the last occurrence of a particular option.
 	Using the last occurrence allows options to be appended to an existing batch or shell file on the command line and override the defaults.
+	<p>This implementation delegates to {@link #getOption(String[], String, Class)} using the serialization form of the given enum.</p>
+	@param <O> The type of option.
+	@param <V> The type of value.
+	@param arguments The array of command line arguments.
+	@param option The name of the option.
+	@param valueType The type of value to expect.
+	@return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
+	@throws IllegalArgumentException if the given value is not valid for the expected type.
+	@see Enums#getSerializationName(Enum)
+	@see Enums#getSerializedEnum(Class, String)
+	@see #getOption(String[], String, Class)
+	*/
+	public static <O extends Enum<O>, V extends Enum<V>> V getOption(final String[] arguments, final O option, final Class<V> valueType)
+	{
+		return getOption(arguments, getSerializationName(option), valueType);
+	}
+
+	/**Searches the given arguments for the last occurrence of a particular option.
+	Using the last occurrence allows options to be appended to an existing batch or shell file on the command line and override the defaults.
 	<p>This implementation delegates to {@link #getOption(String[], String)} using the serialization
 	form of the given enum.</p>
 	@param <O> The type of option.
@@ -155,6 +169,24 @@ public class CommandLineArguments
 	public static <O extends Enum<O>> String getOption(final String[] arguments, final O option)
 	{
 		return getOption(arguments, getSerializationName(option));
+	}
+
+	/**Searches the given arguments for the last occurrence of a particular option.
+	Using the last occurrence allows options to be appended to an existing batch or shell file on the command line and override the defaults.
+	<p>This implementation converts the value, if any, to the given value type, interpreting the value as the serialized form of an enum.</p>
+	@param <V> The type of value.
+	@param arguments The array of command line arguments.
+	@param optionName The name of the option.
+	@param valueType The type of value to expect.
+	@return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
+	@throws IllegalArgumentException if the given value is not valid for the expected type.
+	@see #OPTION_PATTERN
+	@see Enums#getSerializedEnum(Class, String)
+	*/
+	public static <V extends Enum<V>> V getOption(final String[] arguments, final String optionName, final Class<V> valueType)
+	{
+		final String optionValue=getOption(arguments, optionName);	//get the string form of the option
+		return optionValue!=null ? getSerializedEnum(valueType, optionValue) : null;
 	}
 
 	/**Searches the given arguments for the last occurrence of a particular option.
