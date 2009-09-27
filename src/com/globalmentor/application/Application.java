@@ -16,314 +16,81 @@
 
 package com.globalmentor.application;
 
-import java.io.*;
-import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
 
-import com.globalmentor.log.Log;
 import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
-import com.globalmentor.rdf.*;
-import com.globalmentor.urf.DefaultURFResource;
-import com.globalmentor.urf.dcmi.DCMI;
+import com.globalmentor.urf.URFResource;
 
 /**An application that by default is a console application.
-<p>Every application provides a default preference node based upon the
-	implementing application class.</p>
+<p>Every application provides a default preference node based upon the implementing application class.</p>
 @author Garret Wilson
 */
-public abstract class Application extends DefaultURFResource
+public interface Application extends URFResource
 {
 
 	/**An array containing no arguments.*/
-	protected final static String[] NO_ARGUMENTS=new String[0];
+	public final static String[] NO_ARGUMENTS=new String[0];
 	
-	/**The authenticator object used to retrieve client authentication.*/
-	private Authenticable authenticator=null;
-
-		/**@return The authenticator object used to retrieve client authentication.*/
-		public Authenticable getAuthenticator() {return authenticator;}
+	/**@return The authenticator object used to retrieve client authentication.*/
+	public Authenticable getAuthenticator();
 	
-		/**Sets the authenticator object used to retrieve client authentication.
-		This version updates the authenticator of the default HTTP client.
-		@param authenticable The object to retrieve authentication information regarding a client.
-		@see com.globalmentor.net.http.HTTPClient
-		*/
-		public void setAuthenticator(final Authenticable authenticable)
-		{
-			if(authenticator!=authenticable)	//if the authenticator is really changing
-			{
-				authenticator=authenticable;	//update the authenticator
-				HTTPClient.getInstance().setAuthenticator(authenticable);	//update the authenticator for HTTP connections on the default HTTP client			
-			}
-		}
-	
-	/**Whether the object has been modified; the default is not modified.*/
-	private boolean modified=false;
+	/**Sets the authenticator object used to retrieve client authentication.
+	@param authenticable The object to retrieve authentication information regarding a client.
+	@see HTTPClient
+	*/
+	public void setAuthenticator(final Authenticable authenticable);
 
-	/**The command-line arguments of the application.*/
-	private final String[] args;
-
-		/**@return The command-line arguments of the application.*/
-		public String[] getArgs() {return args;}
+	/**@return The command-line arguments of the application.*/
+	public String[] getArgs();
 
 	/**@return The default user preferences for this application.
-	@exception SecurityException Thrown if a security manager is present and
-		it denies <code>RuntimePermission("preferences")</code>.
+	@throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
 	*/
-	public Preferences getPreferences() throws SecurityException
-	{
-		return Preferences.userNodeForPackage(getClass());	//return the user preferences node for whatever class extends this one 
-	}
+	public Preferences getPreferences() throws SecurityException;
 
-	/**@return The title of the application, or <code>null</code> if there is no title.*/
-	public String getTitle()
-	{
-		return DCMI.getTitle(this);	//return the title if there is one
-	}
-
-	/**The expiration date of the application, or <code>null</code> if there is
-		no expiration.
-	*/
-	private Calendar expiration=null;
-
-		/**The expiration date of the application, or <code>null</code> if there is
-			no expiration.
-		*/
-		public Calendar getExpiration() {return expiration;}
-
-		/**Sets the expiration of the application.
-		@param newExpiration The new expiration date, or <code>null</code> if there
-			is no expiration.
-		*/
-		public void setExpiration(final Calendar newExpiration) {expiration=newExpiration;}
-
-	/**The RDF data model of the application, lazily created.*/
-	private RDF rdf=null;
-
-	/**@return The RDF data model of the application, lazily created.*/
-	public RDF getRDF()
-	{
-		if(rdf==null)	//if there is no RDF data model
-		{
-			rdf=new RDF();	//create a new RDF data model
-		}
-		return rdf;	//return the RDF data model
-	}
-
-	/**Reference URI constructor.
-	@param referenceURI The reference URI of the application.
-	*/
-	public Application(final URI referenceURI)
-	{
-		this(referenceURI, NO_ARGUMENTS);	//construct the class with no arguments
-	}
-
-	/**Reference URI and arguments constructor.
-	@param referenceURI The reference URI of the application.
-	@param args The command line arguments.
-	*/
-	public Application(final URI referenceURI, final String[] args)
-	{
-		super(referenceURI);	//construct the parent class
-		this.args=args;	//save the arguments
-	}
+	/**@return The expiration date of the application, or <code>null</code> if there is no expiration.*/
+	public Date getExpirationDate();
 
 	/**Initializes the application.
 	This method is called after construction but before application execution.
-	This version does nothing.
-	@exception Exception Thrown if anything goes wrong.
+	@throws Exception Thrown if anything goes wrong.
 	*/
-	public void initialize() throws Exception	//TODO create a flag that only allows initialization once
-	{
-	}
+	public void initialize() throws Exception;
 
 	/**The main application method.
 	@return The application status.
 	*/ 
-	public int main()
-	{
-		return 0;	//default to returning no error
-	}
+	public int main();
 
 	/**Checks requirements, permissions, and expirations before starting.
 	@return <code>true</code> if the checks succeeded.	
 	*/
-	public boolean canStart()
-	{
-			//check the expiration
-		if(getExpiration()!=null)	//if there is an expiration date
-		{
-			final Calendar now=Calendar.getInstance();	//get the current date
-			if(now.after(getExpiration()))	//if the application has expired
-			{
-					//TODO get the web site from dc:source to
-					//TODO display a title
-				displayError("This version of "+(getTitle()!=null ? getTitle().toString() : "")+" has expired.\nPlease visit http://www.globalmentor.com/software/marmot/\nto download a new copy.");	//G***i18n
-				return false;
-			}
-		}
-		return true;	//show that everything went OK
-	}
+	public boolean canStart();
 
 	/**Displays an error message to the user for an exception.
 	@param throwable The condition that caused the error.
 	*/
-	public void displayError(final Throwable throwable)
-	{
-		Log.error(throwable);
-		displayError(getDisplayErrorMessage(throwable));	//display an error to the user for the throwable
-	}
+	public void displayError(final Throwable throwable);
 	
 	/**Displays the given error to the user
 	@param message The error to display. 
 	*/
-	public void displayError(final String message)
-	{
-		System.err.println(message);	//display the error in the error output
-	}
-
-	/**Constructs a user-presentable error message based on an exception.
-	In most cases this is <code>Throwable.getMessage()</code>.
-	@param throwable The condition that caused the error.
-	@see Throwable#getMessage()
-	*/
-	public static String getDisplayErrorMessage(final Throwable throwable)
-	{
-		if(throwable instanceof FileNotFoundException)	//if a file was not found
-		{
-			return "File not found: "+throwable.getMessage();	//create a message for a file not found G***i18n
-		}
-/*TODO this throws a security exception with Java WebStart; see if it's even needed anymore
-		else if(throwable instanceof sun.io.MalformedInputException)	//if there was an error converting characters; G***put this elsewhere, fix for non-Sun JVMs
-		{
-			return "Invalid character encountered for file encoding.";	//G***i18n
-		}
-*/
-		else  //for any another error
-		{
-			return throwable.getMessage()!=null ? throwable.getMessage() : throwable.getClass().getName();  //get the throwable message or, on last resource, the name of the class
-		}
-	}
-
-	/**Starts an application.
-	@param application The application to start. 
-	@param args The command line arguments.
-	@return The application status.
-	*/
-	public static int run(final Application application, final String[] args)
-	{
-		int result=0;	//start out assuming a neutral result TODO use a constant and a unique value
-		try
-		{
-			initialize(application, args);	//initialize the environment
-			application.initialize();	//initialize the application
-			if(application.canStart())	//perform the pre-run checks; if everything went OK
-			{
-				result=application.main();	//run the application
-			}
-			else	//if something went wrong
-			{
-				result=-1;	//show that we couldn't start TODO use a constant and a unique value
-			}
-		}
-		catch(final Throwable throwable)  //if there are any errors
-		{
-			result=-1;	//show that there was an error TODO use a constant and a unique value
-			application.displayError(throwable);	//report the error
-		}
-		if(result<0)	//if we something went wrong, exit (if everything is going fine, keep running, because we may have a server or frame running)
-		{
-			try
-			{
-				application.exit(result);	//exit with the result (we can't just return, because the main frame, if initialized, will probably keep the thread from stopping)
-			}
-			catch(final Throwable throwable)  //if there are any errors
-			{
-				result=-1;	//show that there was an error during exit TODO use a constant and a unique value
-				application.displayError(throwable);	//report the error
-			}
-			finally
-			{
-				System.exit(result);	//provide a fail-safe way to exit		
-			}
-		}
-		return result;	//always return the result		
-	}
-
-	/**Initializes the environment for the application.
-	@param application The application to start. 
-	@param args The command line arguments.
-	@exception Exception Thrown if anything goes wrong.
-	*/
-	protected static void initialize(final Application application, final String[] args) throws Exception
-	{
-		CommandLineArguments.configureLog(args); //configure debugging based upon the command line arguments
-	}
-
-	/**Responds to a throwable error.
-	@param throwable The throwable object that caused the error 
-	*/
-/*G***del if not needed
-	protected static void error(final Throwable throwable)
-	{
-		Log.error(throwable); //report the error
-	}
-*/
-
-	
-	/**Determines whether the application can exit.
-	This method may query the user.
-	If the application has been modified, the configuration is saved if possible.
-	If there is no configuration I/O kit, no action is taken.
-	If an error occurs, the user is notified.
-	@return <code>true</code> if the application can exit, else <code>false</code>.
-	*/
-	protected boolean canExit()
-	{
-		return true;	//show that we can exit
-	}
+	public void displayError(final String message);
 
 	/**Exits the application with no status.
-	Convenience method which calls <code>exit(int)</code>.
+	Convenience method which calls {@link #exit(int)}.
 	@see #exit(int)
 	*/
-	public final void exit()
-	{
-		exit(0);	//exit with no status
-	}
+	public void exit();
 	
 	/**Exits the application with the given status.
 	This method first checks to see if exit can occur.
-	To add to exit functionality, <code>performExit()</code> should be overridden rather than this method.
 	@param status The exit status.
 	@see #canExit()
 	@see #performExit(int)
 	*/
-	public final void exit(final int status)
-	{
-		if(canExit())	//if we can exit
-		{
-			try
-			{
-				performExit(status);	//perform the exit
-			}
-			catch(final Throwable throwable)  //if there are any errors
-			{
-				displayError(throwable);	//report the error
-			}			
-			System.exit(-1);	//provide a fail-safe way to exit, indicating an error occurred		
-		}
-	}
-
-	/**Exits the application with the given status without checking to see if exit should be performed.
-	@param status The exit status.	
-	@exception Exception Thrown if anything goes wrong.
-	*/
-	protected void performExit(final int status) throws Exception
-	{
-		System.exit(status);	//close the program with the given exit status		
-	}
+	public void exit(final int status);
 
 }
