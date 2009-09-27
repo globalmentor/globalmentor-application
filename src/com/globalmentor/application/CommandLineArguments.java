@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.globalmentor.util;
+package com.globalmentor.application;
 
 import java.io.*;
 import java.util.*;
