@@ -27,6 +27,8 @@ import com.globalmentor.log.*;
 /**Constants and utilities for accessing command-line arguments.
 <p>This implementation recognizes two types of command-line <dfn>switches</dfn>: <dfn>options</dfn>, which have arguments, and <dfn>flags</dfn>, which do not.</p>
 <p>This implementation only recognizes long switches prefixed with {@value #LONG_SWITCH_DELIMITER}.</p>
+<p>Because MS-DOS batch files substitute a space for the equals sign, this implementation accepts the colon character (':') as a replacement for the equals sign ('=')
+	in options, although the equals sign is preferred when possible.</p>
 @author Garret Wilson
 */
 public class CommandLineArguments
@@ -51,13 +53,13 @@ public class CommandLineArguments
 	public final static String LONG_SWITCH_DELIMITER="--";
 	
 	/**The pattern for matching switches in general.*/
-	public final static Pattern SWITCH_PATTERN=Pattern.compile("--([\\w-&&[^=]]+)(?:=(.+)?)");
+	public final static Pattern SWITCH_PATTERN=Pattern.compile("--([\\w-&&[^=:]]+)(?:=(.+)?)");
 
 	/**The pattern for matching flags.*/
-	public final static Pattern FLAG_PATTERN=Pattern.compile("--([\\w-&&[^=]]+)");
+	public final static Pattern FLAG_PATTERN=Pattern.compile("--([\\w-&&[^=:]]+)");
 
 	/**The pattern for matching options.*/
-	public final static Pattern OPTION_PATTERN=Pattern.compile("--([\\w-&&[^=]]+)=(.+)");
+	public final static Pattern OPTION_PATTERN=Pattern.compile("--([\\w-&&[^=:]]+)[=:](.+)");
 
 	/**This class can only be instantiated if a class is derived from it.*/
 	protected CommandLineArguments() {}
