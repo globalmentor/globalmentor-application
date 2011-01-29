@@ -37,7 +37,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	private Authenticable authenticator=null;
 
 		/**@return The authenticator object used to retrieve client authentication.*/
-		@Override
 		public Authenticable getAuthenticator() {return authenticator;}
 	
 		/**Sets the authenticator object used to retrieve client authentication.
@@ -45,7 +44,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 		@param authenticable The object to retrieve authentication information regarding a client.
 		@see HTTPClient
 		*/
-		@Override
 		public void setAuthenticator(final Authenticable authenticable)
 		{
 			if(authenticator!=authenticable)	//if the authenticator is really changing
@@ -59,13 +57,11 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	private final String[] args;
 
 		/**@return The command-line arguments of the application.*/
-		@Override
 		public String[] getArgs() {return args;}
 
 	/**@return The default user preferences for this application.
 	@throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
 	*/
-	@Override
 	public Preferences getPreferences() throws SecurityException
 	{
 		return Preferences.userNodeForPackage(getClass());	//return the user preferences node for whatever class extends this one 
@@ -75,7 +71,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	private Date expirationDate=null;
 
 		/**@return The expiration date of the application, or <code>null</code> if there is no expiration.*/
-		@Override
 		public Date getExpirationDate() {return expirationDate;}
 
 		/**Sets the expiration date of the application.
@@ -106,7 +101,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	This version does nothing.
 	@throws Exception Thrown if anything goes wrong.
 	*/
-	@Override
 	public void initialize() throws Exception	//TODO create a flag that only allows initialization once
 	{
 	}
@@ -114,7 +108,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	/**Checks requirements, permissions, and expirations before starting.
 	@return <code>true</code> if the checks succeeded.
 	*/
-	@Override
 	public boolean canStart()
 	{
 		final Date expirationDate=getExpirationDate();	//check the expiration
@@ -134,7 +127,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	/**Displays an error message to the user for an exception.
 	@param throwable The condition that caused the error.
 	*/
-	@Override
 	public void displayError(final Throwable throwable)
 	{
 		Log.error(throwable);
@@ -144,7 +136,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	/**Displays the given error to the user
 	@param message The error to display. 
 	*/
-	@Override
 	public void displayError(final String message)
 	{
 		System.err.println(message);	//display the error in the error output
@@ -244,7 +235,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	Convenience method which calls <code>exit(int)</code>.
 	@see #exit(int)
 	*/
-	@Override
 	public final void exit()
 	{
 		exit(0);	//exit with no status
@@ -257,7 +247,6 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 	@see #canExit()
 	@see #performExit(int)
 	*/
-	@Override
 	public final void exit(final int status)
 	{
 		if(canExit())	//if we can exit
