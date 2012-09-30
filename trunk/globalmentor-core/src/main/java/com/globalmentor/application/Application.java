@@ -19,9 +19,10 @@ package com.globalmentor.application;
 import java.util.*;
 import java.util.prefs.Preferences;
 
+import org.urframework.URFResource;
+
 import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
-import com.globalmentor.urf.URFResource;
 
 /**An application that by default is a console application.
 <p>Every application provides a default preference node based upon the implementing application class.</p>
