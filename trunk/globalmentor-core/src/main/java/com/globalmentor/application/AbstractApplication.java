@@ -16,12 +16,12 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.Objects.checkInstance;
+
 import java.io.*;
 import java.net.URI;
 import java.util.*;
 import java.util.prefs.Preferences;
-
-import org.urframework.DefaultURFResource;
 
 import com.globalmentor.log.Log;
 import com.globalmentor.net.*;
@@ -31,8 +31,24 @@ import com.globalmentor.net.http.HTTPClient;
 <p>Every application provides a default preference node based upon the implementing application class.</p>
 @author Garret Wilson
 */
-public abstract class AbstractApplication extends DefaultURFResource implements Application
+public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*/ implements Application
 {
+
+	private final URI uri;
+
+	@Override
+	public URI getURI()
+	{
+		return uri;
+	}
+
+	private final String name;
+
+	@Override
+	public String getName()
+	{
+		return name;
+	}
 
 	/**The authenticator object used to retrieve client authentication.*/
 	private Authenticable authenticator=null;
@@ -79,22 +95,25 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 		*/
 		protected void setExpiration(final Date newExpirationDate) {expirationDate=newExpirationDate;}
 
-	/**Reference URI constructor.
-	@param referenceURI The reference URI of the application.
+	/**URI constructor.
+	@param uri The URI identifying the application.
+	@param name The name of the application.
 	*/
-	public AbstractApplication(final URI referenceURI)
+	public AbstractApplication(final URI uri, final String name)
 	{
-		this(referenceURI, NO_ARGUMENTS);	//construct the class with no arguments
+		this(uri, name, NO_ARGUMENTS);	//construct the class with no arguments
 	}
 
-	/**Reference URI and arguments constructor.
-	@param referenceURI The reference URI of the application.
+	/**URI and arguments constructor.
+	@param uri The URI identifying the application.
+	@param name The name of the application.
 	@param args The command line arguments.
 	*/
-	public AbstractApplication(final URI referenceURI, final String[] args)
+	public AbstractApplication(final URI uri, final String name, final String[] args)
 	{
-		super(referenceURI);	//construct the parent class
-		this.args=args;	//save the arguments
+		this.uri=checkInstance(uri);
+		this.name=checkInstance(name);
+		this.args=checkInstance(args);	//save the arguments
 	}
 
 	/**Initializes the application.
@@ -118,7 +137,7 @@ public abstract class AbstractApplication extends DefaultURFResource implements 
 			if(now.after(expirationDate))	//if the application has expired
 			{
 					//TODO get the web site from dc:source to
-				displayError("This version of "+determineLabel()+" has expired.");	//TODO i18n
+				displayError("This version of "+getName()+" has expired.");	//TODO i18n
 				return false;
 			}
 		}

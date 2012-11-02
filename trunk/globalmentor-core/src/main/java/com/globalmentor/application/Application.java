@@ -19,8 +19,7 @@ package com.globalmentor.application;
 import java.util.*;
 import java.util.prefs.Preferences;
 
-import org.urframework.URFResource;
-
+import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
 
@@ -28,11 +27,17 @@ import com.globalmentor.net.http.HTTPClient;
 <p>Every application provides a default preference node based upon the implementing application class.</p>
 @author Garret Wilson
 */
-public interface Application extends URFResource
+public interface Application extends Resource, Named<String> //TODO fix extends URFResource
 {
 
 	/**An array containing no arguments.*/
 	public final static String[] NO_ARGUMENTS=new String[0];
+
+	/**@return The rights message of the application.*/
+	//TODO del public String getRights();
+
+	/**@return A resource instance describing the application.*/
+	//TODO del public Resource getProperties();
 	
 	/**@return The authenticator object used to retrieve client authentication.*/
 	public Authenticable getAuthenticator();
