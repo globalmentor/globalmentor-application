@@ -163,7 +163,7 @@ public class CommandLineArguments
 	 * @param <O> The type of option.
 	 * @param <V> The type of value.
 	 * @param arguments The array of command line arguments.
-	 * @param option The name of the option.
+	 * @param option The option.
 	 * @param valueType The type of value to expect.
 	 * @return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
 	 * @throws IllegalArgumentException if the given value is not valid for the expected type.
@@ -184,7 +184,7 @@ public class CommandLineArguments
 	 * </p>
 	 * @param <O> The type of option.
 	 * @param arguments The array of command line arguments.
-	 * @param option The name of the option.
+	 * @param option The option.
 	 * @return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
 	 * @see Enums#getSerializationName(Enum)
 	 * @see #getOption(String[], String)
@@ -237,6 +237,22 @@ public class CommandLineArguments
 			}
 		}
 		return null; //show that the option wasn't defined
+	}
+
+	/**
+	 * Returns the given arguments for all occurrences a particular option.
+	 * <p>
+	 * This implementation delegates to {@link #getOptions(String[], String)} using the serialization form of the given enum.
+	 * </p>
+	 * @param arguments The array of command line arguments.
+	 * @param option The option.
+	 * @return A non-<code>null</code> list of arguments of the defined options, if any, in the order encountered.
+	 * @see Enums#getSerializationName(Enum)
+	 * @see #getOptions(String[], String)
+	 */
+	public static <O extends Enum<O> & Identifier> List<String> getOptions(final String[] arguments, final O option)
+	{
+		return getOptions(arguments, getSerializationName(option));
 	}
 
 	/**
