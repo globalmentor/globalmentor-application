@@ -40,12 +40,10 @@ import com.globalmentor.log.*;
  * </p>
  * @author Garret Wilson
  */
-public class CommandLineArguments
-{
+public class CommandLineArguments {
 
 	/** Common command-line parameters. */
-	public enum Switch implements Identifier
-	{
+	public enum Switch implements Identifier {
 		/** Verbose output. */
 		VERBOSE,
 		/** Quiet output. */
@@ -71,8 +69,7 @@ public class CommandLineArguments
 	public final static Pattern OPTION_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)[=:](.+)");
 
 	/** This class can only be instantiated if a class is derived from it. */
-	protected CommandLineArguments()
-	{
+	protected CommandLineArguments() {
 	}
 
 	/**
@@ -83,21 +80,14 @@ public class CommandLineArguments
 	 * @see Switch#QUIET
 	 * @see Switch#LOG_FILE
 	 */
-	public static void configureLog(final String[] arguments)
-	{
+	public static void configureLog(final String[] arguments) {
 		Log.Level logLevel = getOption(arguments, Switch.LOG_LEVEL, Log.Level.class); //get the explicit log level, if any
-		if(logLevel == null) //if no specific log level was specified, see if a verbosity level was specified
-		{
-			if(hasFlag(arguments, Switch.VERBOSE))
-			{
+		if(logLevel == null) { //if no specific log level was specified, see if a verbosity level was specified
+			if(hasFlag(arguments, Switch.VERBOSE)) {
 				logLevel = Log.Level.DEBUG;
-			}
-			else if(hasFlag(arguments, Switch.QUIET))
-			{
+			} else if(hasFlag(arguments, Switch.QUIET)) {
 				logLevel = Log.Level.WARN;
-			}
-			else
-			{
+			} else {
 				logLevel = Log.Level.INFO;
 			}
 		}
@@ -112,8 +102,7 @@ public class CommandLineArguments
 	 * @return <code>true</code> if the help flag is defined.
 	 * @see Switch#HELP
 	 */
-	public static boolean hasHelpFlag(final String[] arguments)
-	{
+	public static boolean hasHelpFlag(final String[] arguments) {
 		return hasFlag(arguments, Switch.HELP); //return whether the help flag is defined
 	}
 
@@ -129,8 +118,7 @@ public class CommandLineArguments
 	 * @see Enums#getSerializationName(Enum)
 	 * @see #hasFlag(String[], String)
 	 */
-	public static <F extends Enum<F> & Identifier> boolean hasFlag(final String[] arguments, final F flag)
-	{
+	public static <F extends Enum<F> & Identifier> boolean hasFlag(final String[] arguments, final F flag) {
 		return hasFlag(arguments, getSerializationName(flag));
 	}
 
@@ -141,13 +129,10 @@ public class CommandLineArguments
 	 * @return <code>true</code> if the flag is defined, else <code>false</code>.
 	 * @see #FLAG_PATTERN
 	 */
-	public static boolean hasFlag(final String[] arguments, final String flagName)
-	{
-		for(int i = 0; i < arguments.length; ++i) //look at each of the arguments
-		{
+	public static boolean hasFlag(final String[] arguments, final String flagName) {
+		for(int i = 0; i < arguments.length; ++i) { //look at each of the arguments
 			final Matcher flagMatcher = FLAG_PATTERN.matcher(arguments[i]); //try to match against this argument
-			if(flagMatcher.matches() && flagName.equals(flagMatcher.group(1))) //if this is a flag with the correct name
-			{
+			if(flagMatcher.matches() && flagName.equals(flagMatcher.group(1))) { //if this is a flag with the correct name
 				return true; //we found the flag
 			}
 		}
@@ -171,8 +156,7 @@ public class CommandLineArguments
 	 * @see Enums#getSerializedEnum(Class, String)
 	 * @see #getOption(String[], String, Class)
 	 */
-	public static <O extends Enum<O> & Identifier, V extends Enum<V> & Identifier> V getOption(final String[] arguments, final O option, final Class<V> valueType)
-	{
+	public static <O extends Enum<O> & Identifier, V extends Enum<V> & Identifier> V getOption(final String[] arguments, final O option, final Class<V> valueType) {
 		return getOption(arguments, getSerializationName(option), valueType);
 	}
 
@@ -189,8 +173,7 @@ public class CommandLineArguments
 	 * @see Enums#getSerializationName(Enum)
 	 * @see #getOption(String[], String)
 	 */
-	public static <O extends Enum<O> & Identifier> String getOption(final String[] arguments, final O option)
-	{
+	public static <O extends Enum<O> & Identifier> String getOption(final String[] arguments, final O option) {
 		return getOption(arguments, getSerializationName(option));
 	}
 
@@ -209,8 +192,7 @@ public class CommandLineArguments
 	 * @see #OPTION_PATTERN
 	 * @see Enums#getSerializedEnum(Class, String)
 	 */
-	public static <V extends Enum<V> & Identifier> V getOption(final String[] arguments, final String optionName, final Class<V> valueType)
-	{
+	public static <V extends Enum<V> & Identifier> V getOption(final String[] arguments, final String optionName, final Class<V> valueType) {
 		final String optionValue = getOption(arguments, optionName); //get the string form of the option
 		return optionValue != null ? getSerializedEnum(valueType, optionValue) : null;
 	}
@@ -223,15 +205,11 @@ public class CommandLineArguments
 	 * @return The argument of the last occurrence of the given option, or <code>null</code> if the option is not defined.
 	 * @see #OPTION_PATTERN
 	 */
-	public static String getOption(final String[] arguments, final String optionName)
-	{
-		for(int i = arguments.length - 1; i >= 0; --i) //look at each of the arguments in reverse order
-		{
+	public static String getOption(final String[] arguments, final String optionName) {
+		for(int i = arguments.length - 1; i >= 0; --i) { //look at each of the arguments in reverse order
 			final Matcher optionMatcher = OPTION_PATTERN.matcher(arguments[i]); //try to match against this argument
-			if(optionMatcher.matches()) //if this is an argument
-			{
-				if(optionName.equals(optionMatcher.group(1))) //if this is the correct option
-				{
+			if(optionMatcher.matches()) { //if this is an argument
+				if(optionName.equals(optionMatcher.group(1))) { //if this is the correct option
 					return optionMatcher.group(2); //return this option
 				}
 			}
@@ -250,8 +228,7 @@ public class CommandLineArguments
 	 * @see Enums#getSerializationName(Enum)
 	 * @see #getOptions(String[], String)
 	 */
-	public static <O extends Enum<O> & Identifier> List<String> getOptions(final String[] arguments, final O option)
-	{
+	public static <O extends Enum<O> & Identifier> List<String> getOptions(final String[] arguments, final O option) {
 		return getOptions(arguments, getSerializationName(option));
 	}
 
@@ -262,19 +239,14 @@ public class CommandLineArguments
 	 * @return A non-<code>null</code> list of arguments of the defined options, if any, in the order encountered.
 	 * @see #OPTION_PATTERN
 	 */
-	public static List<String> getOptions(final String[] arguments, final String optionName)
-	{
+	public static List<String> getOptions(final String[] arguments, final String optionName) {
 		final int argumentCount = arguments.length;
 		List<String> options = null;
-		for(int i = 0; i < argumentCount; ++i) //look at each of the arguments
-		{
+		for(int i = 0; i < argumentCount; ++i) { //look at each of the arguments
 			final Matcher optionMatcher = OPTION_PATTERN.matcher(arguments[i]); //try to match against this argument
-			if(optionMatcher.matches()) //if this is an argument
-			{
-				if(optionName.equals(optionMatcher.group(1))) //if this is the correct option
-				{
-					if(options == null) //if we don't yet have a list of options
-					{
+			if(optionMatcher.matches()) { //if this is an argument
+				if(optionName.equals(optionMatcher.group(1))) { //if this is the correct option
+					if(options == null) { //if we don't yet have a list of options
 						options = new ArrayList<String>(); //create a new list for the parameters
 					}
 					options.add(optionMatcher.group(2)); //add this option
@@ -290,8 +262,7 @@ public class CommandLineArguments
 	 * @return <code>true</code> if the argument is a switch.
 	 * @see #SWITCH_PATTERN
 	 */
-	public static boolean isSwitch(final String argument)
-	{
+	public static boolean isSwitch(final String argument) {
 		return SWITCH_PATTERN.matcher(argument).matches(); //see if the argument matches the switch pattern
 	}
 
@@ -301,8 +272,7 @@ public class CommandLineArguments
 	 * @return A command-line switch.
 	 */
 	@Deprecated
-	public static String createSwitch(final String switchString)
-	{
+	public static String createSwitch(final String switchString) {
 		return LONG_SWITCH_DELIMITER + switchString;
 	}
 

@@ -23,80 +23,88 @@ import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 import com.globalmentor.net.http.HTTPClient;
 
-/**An application that by default is a console application.
-<p>Every application provides a default preference node based upon the implementing application class.</p>
-@author Garret Wilson
-*/
-public interface Application extends Resource, Named<String> //TODO fix extends URFResource
-{
+/**
+ * An application that by default is a console application.
+ * <p>
+ * Every application provides a default preference node based upon the implementing application class.
+ * </p>
+ * @author Garret Wilson
+ */
+public interface Application extends Resource, Named<String> { //TODO fix extends URFResource
 
-	/**An array containing no arguments.*/
-	public final static String[] NO_ARGUMENTS=new String[0];
+	/** An array containing no arguments. */
+	public final static String[] NO_ARGUMENTS = new String[0];
 
-	/**@return The rights message of the application.*/
+	/** @return The rights message of the application. */
 	//TODO del public String getRights();
 
-	/**@return A resource instance describing the application.*/
+	/** @return A resource instance describing the application. */
 	//TODO del public Resource getProperties();
-	
-	/**@return The authenticator object used to retrieve client authentication.*/
+
+	/** @return The authenticator object used to retrieve client authentication. */
 	public Authenticable getAuthenticator();
-	
-	/**Sets the authenticator object used to retrieve client authentication.
-	@param authenticable The object to retrieve authentication information regarding a client.
-	@see HTTPClient
-	*/
+
+	/**
+	 * Sets the authenticator object used to retrieve client authentication.
+	 * @param authenticable The object to retrieve authentication information regarding a client.
+	 * @see HTTPClient
+	 */
 	public void setAuthenticator(final Authenticable authenticable);
 
-	/**@return The command-line arguments of the application.*/
+	/** @return The command-line arguments of the application. */
 	public String[] getArgs();
 
-	/**@return The default user preferences for this application.
-	@throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
-	*/
+	/**
+	 * @return The default user preferences for this application.
+	 * @throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
+	 */
 	public Preferences getPreferences() throws SecurityException;
 
-	/**@return The expiration date of the application, or <code>null</code> if there is no expiration.*/
+	/** @return The expiration date of the application, or <code>null</code> if there is no expiration. */
 	public Date getExpirationDate();
 
-	/**Initializes the application.
-	This method is called after construction but before application execution.
-	@throws Exception Thrown if anything goes wrong.
-	*/
+	/**
+	 * Initializes the application. This method is called after construction but before application execution.
+	 * @throws Exception Thrown if anything goes wrong.
+	 */
 	public void initialize() throws Exception;
 
-	/**The main application method.
-	@return The application status.
-	*/ 
+	/**
+	 * The main application method.
+	 * @return The application status.
+	 */
 	public int main();
 
-	/**Checks requirements, permissions, and expirations before starting.
-	@return <code>true</code> if the checks succeeded.	
-	*/
+	/**
+	 * Checks requirements, permissions, and expirations before starting.
+	 * @return <code>true</code> if the checks succeeded.
+	 */
 	public boolean canStart();
 
-	/**Displays an error message to the user for an exception.
-	@param throwable The condition that caused the error.
-	*/
+	/**
+	 * Displays an error message to the user for an exception.
+	 * @param throwable The condition that caused the error.
+	 */
 	public void displayError(final Throwable throwable);
-	
-	/**Displays the given error to the user
-	@param message The error to display. 
-	*/
+
+	/**
+	 * Displays the given error to the user
+	 * @param message The error to display.
+	 */
 	public void displayError(final String message);
 
-	/**Exits the application with no status.
-	Convenience method which calls {@link #exit(int)}.
-	@see #exit(int)
-	*/
+	/**
+	 * Exits the application with no status. Convenience method which calls {@link #exit(int)}.
+	 * @see #exit(int)
+	 */
 	public void exit();
-	
-	/**Exits the application with the given status.
-	This method first checks to see if exit can occur.
-	@param status The exit status.
-	@see #canExit()
-	@see #performExit(int)
-	*/
+
+	/**
+	 * Exits the application with the given status. This method first checks to see if exit can occur.
+	 * @param status The exit status.
+	 * @see #canExit()
+	 * @see #performExit(int)
+	 */
 	public void exit(final int status);
 
 }
