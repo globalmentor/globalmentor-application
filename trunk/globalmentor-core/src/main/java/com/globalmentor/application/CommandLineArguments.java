@@ -57,16 +57,16 @@ public class CommandLineArguments {
 	}
 
 	/** The long delimiter that introduces a switch. */
-	public final static String LONG_SWITCH_DELIMITER = "--";
+	public static final String LONG_SWITCH_DELIMITER = "--";
 
 	/** The pattern for matching switches in general. */
-	public final static Pattern SWITCH_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)(?:=(.+)?)");
+	public static final Pattern SWITCH_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)(?:=(.+)?)");
 
 	/** The pattern for matching flags. */
-	public final static Pattern FLAG_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)");
+	public static final Pattern FLAG_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)");
 
 	/** The pattern for matching options. */
-	public final static Pattern OPTION_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)[=:](.+)");
+	public static final Pattern OPTION_PATTERN = Pattern.compile("--([\\w-&&[^=:]]+)[=:](.+)");
 
 	/** This class can only be instantiated if a class is derived from it. */
 	protected CommandLineArguments() {

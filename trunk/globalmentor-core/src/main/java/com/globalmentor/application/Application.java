@@ -33,7 +33,7 @@ import com.globalmentor.net.http.HTTPClient;
 public interface Application extends Resource, Named<String> { //TODO fix extends URFResource
 
 	/** An array containing no arguments. */
-	public final static String[] NO_ARGUMENTS = new String[0];
+	public static final String[] NO_ARGUMENTS = new String[0];
 
 	/** @return The rights message of the application. */
 	//TODO del public String getRights();
