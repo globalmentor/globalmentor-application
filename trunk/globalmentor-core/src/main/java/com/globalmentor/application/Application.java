@@ -21,7 +21,6 @@ import java.util.prefs.Preferences;
 
 import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
-import com.globalmentor.net.http.HTTPClient;
 
 /**
  * An application that by default is a console application.

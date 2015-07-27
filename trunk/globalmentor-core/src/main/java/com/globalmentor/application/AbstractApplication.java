@@ -25,7 +25,6 @@ import java.util.prefs.Preferences;
 
 import com.globalmentor.log.Log;
 import com.globalmentor.net.*;
-import com.globalmentor.net.http.HTTPClient;
 
 /**
  * An abstract implementation of an application that by default is a console application.
@@ -66,7 +65,7 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	public void setAuthenticator(final Authenticable authenticable) {
 		if(authenticator != authenticable) { //if the authenticator is really changing
 			authenticator = authenticable; //update the authenticator
-			HTTPClient.getInstance().setAuthenticator(authenticable); //update the authenticator for HTTP connections on the default HTTP client			
+			//TODO do we need to set the network authenticator in some general way? HTTPClient.getInstance().setAuthenticator(authenticable); //update the authenticator for HTTP connections on the default HTTP client			
 		}
 	}
 
