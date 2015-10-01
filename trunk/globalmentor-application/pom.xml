@@ -20,6 +20,12 @@
 			<artifactId>globalmentor-core</artifactId>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.globalmentor</groupId>
+			<artifactId>globalmentor-log</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>
