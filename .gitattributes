@@ -34,15 +34,16 @@
 *.mp3 binary
 *.mp4 binary
 *.ogg binary
+*.php text diff=php
 *.pdf binary
 *.png binary
-*.sql text
-*.svg text
-*.swf binary
-*.php text diff=php
 *.properties text
 *.sh eol=lf
 *.so binary
+*.sql text
+*.surf text
+*.svg text
+*.swf binary
 *.tif binary
 *.tiff binary
 *.tld text
