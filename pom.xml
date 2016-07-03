@@ -5,11 +5,45 @@
 
 	<groupId>com.globalmentor</groupId>
 	<artifactId>globalmentor-application</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>0.5.0</version>
 	<packaging>jar</packaging>
 
-	<name>GlobalMentor Application Library</name>
-	<url>http://www.globalmentor.com/</url>
+	<name>GlobalMentor Application</name>
+	<description>GlobalMentor Java application library.</description>
+	<url>http://www.globalmentor.com/software/</url>
+	<inceptionYear>1996</inceptionYear>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<organization>
+		<name>GlobalMentor, Inc.</name>
+		<url>http://www.globalmentor.com/</url>
+	</organization>
+
+	<developers>
+		<developer>
+			<name>Garret Wilson</name>
+			<email>garret@globalmentor.com</email>
+			<organization>GlobalMentor, Inc.</organization>
+			<organizationUrl>http://www.globalmentor.com/</organizationUrl>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:https://bitbucket.org/globalmentor/globalmentor-application.git</connection>
+		<developerConnection>scm:git:https://bitbucket.org/globalmentor/globalmentor-application.git</developerConnection>
+		<url>https://bitbucket.org/globalmentor/globalmentor-application</url>
+	</scm>
+
+	<prerequisites>
+		<maven>3.0.4</maven>
+	</prerequisites>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,7 +59,7 @@
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-log</artifactId>
-			<version>1.0-SNAPSHOT</version>
+			<version>0.5.0</version>
 		</dependency>
 	</dependencies>
 
@@ -34,25 +68,47 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
+				<version>3.5.1</version>
 				<configuration>
 					<source>1.7</source>
 					<target>1.7</target>
 				</configuration>
 			</plugin>
+
+			<plugin>
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<version>1.6.7</version>
+				<extensions>true</extensions>
+				<configuration>
+					<serverId>ossrh</serverId>
+					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+					<autoReleaseAfterClose>true</autoReleaseAfterClose>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
 
 	<profiles>
 		<profile>
 			<id>release</id>
 			<build>
 				<plugins>
-					<!--source jar -->
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>2.1.2</version>
+						<version>3.0.0</version>
 						<executions>
 							<execution>
 								<id>package-sources</id>
@@ -63,13 +119,11 @@
 						</executions>
 					</plugin>
 
-					<!--javadoc -->
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.10.3</version>
+						<version>2.10.4</version>
 						<configuration>
-							<bottom><![CDATA[<em>Copyright © 2005-2012 GlobalMentor, Inc. All Rights Reserved.</em>]]></bottom>
 							<quiet>true</quiet>
 						</configuration>
 						<executions>
@@ -81,6 +135,23 @@
 								<configuration>
 									<!-- turn off Javadoc errors from warnings; requires JDK 8 -->
 									<additionalparam>-Xdoclint:none</additionalparam>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.6</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<keyname>software@globalmentor.com</keyname>
 								</configuration>
 							</execution>
 						</executions>
