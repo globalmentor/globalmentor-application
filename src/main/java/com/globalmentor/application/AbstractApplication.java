@@ -33,7 +33,7 @@ import com.globalmentor.net.*;
  * </p>
  * @author Garret Wilson
  */
-public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*/implements Application {
+public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*/ implements Application {
 
 	private final URI uri;
 
@@ -60,7 +60,6 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	/**
 	 * Sets the authenticator object used to retrieve client authentication. This version updates the authenticator of the default HTTP client.
 	 * @param authenticable The object to retrieve authentication information regarding a client.
-	 * @see HTTPClient
 	 */
 	public void setAuthenticator(final Authenticable authenticable) {
 		if(authenticator != authenticable) { //if the authenticator is really changing
@@ -166,6 +165,7 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	/**
 	 * Constructs a user-presentable error message based on an exception. In most cases this is <code>Throwable.getMessage()</code>.
 	 * @param throwable The condition that caused the error.
+	 * @return The error message.
 	 * @see Throwable#getMessage()
 	 */
 	public static String getDisplayErrorMessage(final Throwable throwable) {

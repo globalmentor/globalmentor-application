@@ -5,7 +5,7 @@
 
 	<groupId>com.globalmentor</groupId>
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.5.0</version>
+	<version>0.5.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>GlobalMentor Application</name>
@@ -132,10 +132,6 @@
 								<goals>
 									<goal>jar</goal>
 								</goals>
-								<configuration>
-									<!-- turn off Javadoc errors from warnings; requires JDK 8 -->
-									<additionalparam>-Xdoclint:none</additionalparam>
-								</configuration>
 							</execution>
 						</executions>
 					</plugin>
