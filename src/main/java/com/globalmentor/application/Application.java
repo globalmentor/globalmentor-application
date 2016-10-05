@@ -46,7 +46,6 @@ public interface Application extends Resource, Named<String> { //TODO fix extend
 	/**
 	 * Sets the authenticator object used to retrieve client authentication.
 	 * @param authenticable The object to retrieve authentication information regarding a client.
-	 * @see HTTPClient
 	 */
 	public void setAuthenticator(final Authenticable authenticable);
 
@@ -101,8 +100,8 @@ public interface Application extends Resource, Named<String> { //TODO fix extend
 	/**
 	 * Exits the application with the given status. This method first checks to see if exit can occur.
 	 * @param status The exit status.
-	 * @see #canExit()
-	 * @see #performExit(int)
+	 * @see AbstractApplication#canExit()
+	 * @see AbstractApplication#performExit(int)
 	 */
 	public void exit(final int status);
 

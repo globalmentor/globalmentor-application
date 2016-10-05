@@ -109,7 +109,7 @@ public class CommandLineArguments {
 	/**
 	 * Searches the argument array to see if a particular flag is defined.
 	 * <p>
-	 * This implementation delegates to {@link #getFlag(String[], String)} using the serialization form of the given enum.
+	 * This implementation delegates to {@link #hasFlag(String[], String)} using the serialization form of the given enum.
 	 * </p>
 	 * @param <F> The type of flag.
 	 * @param arguments The array of command line arguments.
@@ -224,6 +224,7 @@ public class CommandLineArguments {
 	 * </p>
 	 * @param arguments The array of command line arguments.
 	 * @param option The option.
+	 * @param <O> The type of option.
 	 * @return A non-<code>null</code> list of arguments of the defined options, if any, in the order encountered.
 	 * @see Enums#getSerializationName(Enum)
 	 * @see #getOptions(String[], String)
