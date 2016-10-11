@@ -16,7 +16,7 @@
 
 package com.globalmentor.application;
 
-import static com.globalmentor.java.Objects.checkInstance;
+import static java.util.Objects.*;
 
 import java.io.*;
 import java.net.URI;
@@ -116,9 +116,9 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	 * @param args The command line arguments.
 	 */
 	public AbstractApplication(final URI uri, final String name, final String[] args) {
-		this.uri = checkInstance(uri);
-		this.name = checkInstance(name);
-		this.args = checkInstance(args); //save the arguments
+		this.uri = requireNonNull(uri);
+		this.name = requireNonNull(name);
+		this.args = requireNonNull(args); //save the arguments
 	}
 
 	/**
