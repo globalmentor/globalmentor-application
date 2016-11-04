@@ -53,13 +53,13 @@
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-core</artifactId>
-			<version>0.5.0</version>
+			<version>0.5.3-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-log</artifactId>
-			<version>0.5.0</version>
+			<version>0.5.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 
