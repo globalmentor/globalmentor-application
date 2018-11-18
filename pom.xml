@@ -16,15 +16,6 @@
 	<url>http://www.globalmentor.com/software/</url>
 	<inceptionYear>1996</inceptionYear>
 
-	<developers>
-		<developer>
-			<name>Garret Wilson</name>
-			<email>garret@globalmentor.com</email>
-			<organization>GlobalMentor, Inc.</organization>
-			<organizationUrl>http://www.globalmentor.com/</organizationUrl>
-		</developer>
-	</developers>
-
 	<scm>
 		<connection>scm:git:https://bitbucket.org/globalmentor/globalmentor-application.git</connection>
 		<developerConnection>scm:git:https://bitbucket.org/globalmentor/globalmentor-application.git</developerConnection>
