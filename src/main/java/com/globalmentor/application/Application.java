@@ -1,5 +1,5 @@
 /*
- * Copyright © 1996-2008 GlobalMentor, Inc. <http://www.globalmentor.com/>
+ * Copyright © 1996-2019 GlobalMentor, Inc. <http://www.globalmentor.com/>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
 
@@ -23,47 +24,33 @@ import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 
 /**
- * An application that by default is a console application.
- * <p>
- * Every application provides a default preference node based upon the implementing application class.
- * </p>
+ * A general application.
  * @author Garret Wilson
  */
-public interface Application extends Resource, Named<String> { //TODO fix extends URFResource
+public interface Application extends Resource, Named<String> {
 
 	/** An array containing no arguments. */
 	public static final String[] NO_ARGUMENTS = new String[0];
 
-	/** @return The rights message of the application. */
-	//TODO del public String getRights();
-
-	/** @return A resource instance describing the application. */
-	//TODO del public Resource getProperties();
-
 	/** @return The authenticator object used to retrieve client authentication. */
-	public Authenticable getAuthenticator();
-
-	/**
-	 * Sets the authenticator object used to retrieve client authentication.
-	 * @param authenticable The object to retrieve authentication information regarding a client.
-	 */
-	public void setAuthenticator(final Authenticable authenticable);
+	public Optional<Authenticable> getAuthenticator();
 
 	/** @return The command-line arguments of the application. */
 	public String[] getArgs();
 
 	/**
+	 * Returns the application user preferences.
 	 * @return The default user preferences for this application.
-	 * @throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
+	 * @throws SecurityException if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
 	 */
 	public Preferences getPreferences() throws SecurityException;
 
-	/** @return The expiration date of the application, or <code>null</code> if there is no expiration. */
-	public Date getExpirationDate();
+	/** @return The expiration date of the application, if there is one. */
+	public Optional<LocalDate> getExpirationDate();
 
 	/**
 	 * Initializes the application. This method is called after construction but before application execution.
-	 * @throws Exception Thrown if anything goes wrong.
+	 * @throws Exception if anything goes wrong.
 	 */
 	public void initialize() throws Exception;
 
@@ -83,25 +70,28 @@ public interface Application extends Resource, Named<String> { //TODO fix extend
 	 * Displays an error message to the user for an exception.
 	 * @param throwable The condition that caused the error.
 	 */
+	@Deprecated
 	public void displayError(final Throwable throwable);
 
 	/**
 	 * Displays the given error to the user
 	 * @param message The error to display.
 	 */
+	@Deprecated
 	public void displayError(final String message);
 
 	/**
-	 * Exits the application with no status. Convenience method which calls {@link #exit(int)}.
+	 * Exits the application with no status.
+	 * @implSpec The default implementation delegates to {@link #exit(int)} with a value of <code>0</code>.
 	 * @see #exit(int)
 	 */
-	public void exit();
+	public default void exit() {
+		exit(0); //exit with no status		
+	}
 
 	/**
 	 * Exits the application with the given status. This method first checks to see if exit can occur.
 	 * @param status The exit status.
-	 * @see AbstractApplication#canExit()
-	 * @see AbstractApplication#performExit(int)
 	 */
 	public void exit(final int status);
 

@@ -24,7 +24,6 @@ import com.globalmentor.java.Enums;
 import static com.globalmentor.java.Enums.*;
 
 import com.globalmentor.lex.Identifier;
-import com.globalmentor.log.*;
 
 /**
  * Constants and utilities for accessing command-line arguments.
@@ -81,6 +80,7 @@ public class CommandLineArguments {
 	 * @see Switch#LOG_FILE
 	 */
 	public static void configureLog(final String[] arguments) {
+		/*TODO transfer
 		Log.Level logLevel = getOption(arguments, Switch.LOG_LEVEL, Log.Level.class); //get the explicit log level, if any
 		if(logLevel == null) { //if no specific log level was specified, see if a verbosity level was specified
 			if(hasFlag(arguments, Switch.VERBOSE)) {
@@ -94,6 +94,7 @@ public class CommandLineArguments {
 		final String logFileOption = getOption(arguments, Switch.LOG_FILE); //get the log file, if any
 		final File logFile = logFileOption != null ? new File(logFileOption) : null;
 		Log.setDefaultConfiguration(new DefaultLogConfiguration(logFile, logLevel)); //set the default log configuration
+		*/
 	}
 
 	/**

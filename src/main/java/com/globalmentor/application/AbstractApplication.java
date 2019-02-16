@@ -1,5 +1,5 @@
 /*
- * Copyright © 1996-2008 GlobalMentor, Inc. <http://www.globalmentor.com/>
+ * Copyright © 1996-2019 GlobalMentor, Inc. <http://www.globalmentor.com/>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,28 +19,22 @@ package com.globalmentor.application;
 import static java.util.Objects.*;
 
 import java.io.*;
-import java.net.URI;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
 
-import com.globalmentor.log.Log;
+import javax.annotation.*;
+
 import com.globalmentor.net.*;
+
+import io.clogr.Clogged;
 
 /**
  * An abstract implementation of an application that by default is a console application.
- * <p>
- * Every application provides a default preference node based upon the implementing application class.
- * </p>
+ * @implSpec The default preference node is based upon the implementing application class.
  * @author Garret Wilson
  */
-public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*/ implements Application {
-
-	private final URI uri;
-
-	@Override
-	public URI getURI() {
-		return uri;
-	}
+public abstract class AbstractApplication implements Application, Clogged {
 
 	private final String name;
 
@@ -49,19 +43,19 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 		return name;
 	}
 
-	/** The authenticator object used to retrieve client authentication. */
+	/** The authenticator object used to retrieve client authentication, or <code>null</code> if there is no authenticator. */
 	private Authenticable authenticator = null;
 
-	/** @return The authenticator object used to retrieve client authentication. */
-	public Authenticable getAuthenticator() {
-		return authenticator;
+	@Override
+	public Optional<Authenticable> getAuthenticator() {
+		return Optional.ofNullable(authenticator);
 	}
 
 	/**
-	 * Sets the authenticator object used to retrieve client authentication. This version updates the authenticator of the default HTTP client.
+	 * Sets the authenticator object used to retrieve client authentication.
 	 * @param authenticable The object to retrieve authentication information regarding a client.
 	 */
-	public void setAuthenticator(final Authenticable authenticable) {
+	protected void setAuthenticator(@Nullable final Authenticable authenticable) {
 		if(authenticator != authenticable) { //if the authenticator is really changing
 			authenticator = authenticable; //update the authenticator
 			//TODO do we need to set the network authenticator in some general way? HTTPClient.getInstance().setAuthenticator(authenticable); //update the authenticator for HTTP connections on the default HTTP client			
@@ -76,49 +70,43 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 		return args;
 	}
 
-	/**
-	 * @return The default user preferences for this application.
-	 * @throws SecurityException Thrown if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
-	 */
+	@Override
 	public Preferences getPreferences() throws SecurityException {
 		return Preferences.userNodeForPackage(getClass()); //return the user preferences node for whatever class extends this one 
 	}
 
 	/** The expiration date of the application, or <code>null</code> if there is no expiration. */
-	private Date expirationDate = null;
+	private LocalDate expirationDate = null;
 
-	/** @return The expiration date of the application, or <code>null</code> if there is no expiration. */
-	public Date getExpirationDate() {
-		return expirationDate;
+	@Override
+	public Optional<LocalDate> getExpirationDate() {
+		return Optional.ofNullable(expirationDate);
 	}
 
 	/**
 	 * Sets the expiration date of the application.
 	 * @param newExpirationDate The new expiration date, or <code>null</code> if there is no expiration.
 	 */
-	protected void setExpiration(final Date newExpirationDate) {
+	protected void setExpiration(@Nullable final LocalDate newExpirationDate) {
 		expirationDate = newExpirationDate;
 	}
 
 	/**
-	 * URI constructor.
-	 * @param uri The URI identifying the application.
+	 * Name constructor.
 	 * @param name The name of the application.
 	 */
-	public AbstractApplication(final URI uri, final String name) {
-		this(uri, name, NO_ARGUMENTS); //construct the class with no arguments
+	public AbstractApplication(@Nonnull final String name) {
+		this(name, NO_ARGUMENTS);
 	}
 
 	/**
-	 * URI and arguments constructor.
-	 * @param uri The URI identifying the application.
+	 * Name arguments constructor.
 	 * @param name The name of the application.
 	 * @param args The command line arguments.
 	 */
-	public AbstractApplication(final URI uri, final String name, final String[] args) {
-		this.uri = requireNonNull(uri);
+	public AbstractApplication(@Nonnull final String name, @Nonnull final String[] args) {
 		this.name = requireNonNull(name);
-		this.args = requireNonNull(args); //save the arguments
+		this.args = requireNonNull(args);
 	}
 
 	/**
@@ -133,24 +121,21 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	 * @return <code>true</code> if the checks succeeded.
 	 */
 	public boolean canStart() {
-		final Date expirationDate = getExpirationDate(); //check the expiration
-		if(expirationDate != null) { //if there is an expiration date
-			final Date now = new Date(); //get the current date
-			if(now.after(expirationDate)) { //if the application has expired
-				//TODO get the web site from dc:source to
-				displayError("This version of " + getName() + " has expired."); //TODO i18n
-				return false;
-			}
+		final boolean isExpired = getExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
+		if(isExpired) {
+			displayError("This version of " + getName() + " has expired."); //TODO i18n
+			return false;
 		}
 		return true; //show that everything went OK
 	}
 
 	/**
 	 * Displays an error message to the user for an exception.
+	 * @param message The message to display.
 	 * @param throwable The condition that caused the error.
 	 */
-	public void displayError(final Throwable throwable) {
-		Log.error(throwable);
+	public void displayError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+		getLogger().error(message, throwable);
 		displayError(getDisplayErrorMessage(throwable)); //display an error to the user for the throwable
 	}
 
@@ -163,21 +148,15 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	}
 
 	/**
-	 * Constructs a user-presentable error message based on an exception. In most cases this is <code>Throwable.getMessage()</code>.
+	 * Constructs a user-presentable error message based on an exception. In most cases this is {@link Throwable#getMessage()}.
 	 * @param throwable The condition that caused the error.
 	 * @return The error message.
 	 * @see Throwable#getMessage()
 	 */
-	public static String getDisplayErrorMessage(final Throwable throwable) {
+	protected static String getDisplayErrorMessage(final Throwable throwable) {
 		if(throwable instanceof FileNotFoundException) { //if a file was not found
 			return "File not found: " + throwable.getMessage(); //create a message for a file not found TODO i18n
-		}
-		/*TODO this throws a security exception with Java WebStart; see if it's even needed anymore
-				else if(throwable instanceof sun.io.MalformedInputException) {	//if there was an error converting characters; TODO put this elsewhere, fix for non-Sun JVMs
-					return "Invalid character encountered for file encoding.";	//TODO i18n
-				}
-		*/
-		else { //for any another error
+		} else { //for any another error
 			return throwable.getMessage() != null ? throwable.getMessage() : throwable.getClass().getName(); //get the throwable message or, on last resource, the name of the class
 		}
 	}
@@ -227,7 +206,6 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 
 	/**
 	 * Determines whether the application can exit. This method may query the user. If the application has been modified, the configuration is saved if possible.
-	 * If there is no configuration I/O kit, no action is taken. If an error occurs, the user is notified.
 	 * @return <code>true</code> if the application can exit, else <code>false</code>.
 	 */
 	protected boolean canExit() {
@@ -235,16 +213,8 @@ public abstract class AbstractApplication /*TODO fix extends DefaultURFResource*
 	}
 
 	/**
-	 * Exits the application with no status. Convenience method which calls <code>exit(int)</code>.
-	 * @see #exit(int)
-	 */
-	public final void exit() {
-		exit(0); //exit with no status
-	}
-
-	/**
-	 * Exits the application with the given status. This method first checks to see if exit can occur. To add to exit functionality, {@link #performExit(int)}
-	 * should be overridden rather than this method.
+	 * Exits the application with the given status. This method first checks to see if exit can occur.
+	 * @apiNote To add to exit functionality, {@link #performExit(int)} should be overridden rather than this method.
 	 * @param status The exit status.
 	 * @see #canExit()
 	 * @see #performExit(int)
