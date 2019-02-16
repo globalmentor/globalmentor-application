@@ -27,21 +27,12 @@ import javax.annotation.*;
 
 import com.globalmentor.net.*;
 
-import io.clogr.Clogged;
-
 /**
  * An abstract implementation of an application that by default is a console application.
  * @implSpec The default preference node is based upon the implementing application class.
  * @author Garret Wilson
  */
-public abstract class AbstractApplication implements Application, Clogged {
-
-	private final String name;
-
-	@Override
-	public String getName() {
-		return name;
-	}
+public abstract class AbstractApplication implements Application {
 
 	/** The authenticator object used to retrieve client authentication, or <code>null</code> if there is no authenticator. */
 	private Authenticable authenticator = null;
@@ -65,7 +56,7 @@ public abstract class AbstractApplication implements Application, Clogged {
 	/** The command-line arguments of the application. */
 	private final String[] args;
 
-	/** @return The command-line arguments of the application. */
+	@Override
 	public String[] getArgs() {
 		return args;
 	}
@@ -87,39 +78,32 @@ public abstract class AbstractApplication implements Application, Clogged {
 	 * Sets the expiration date of the application.
 	 * @param newExpirationDate The new expiration date, or <code>null</code> if there is no expiration.
 	 */
-	protected void setExpiration(@Nullable final LocalDate newExpirationDate) {
+	protected void setExpirationDate(@Nullable final LocalDate newExpirationDate) {
 		expirationDate = newExpirationDate;
 	}
 
-	/**
-	 * Name constructor.
-	 * @param name The name of the application.
-	 */
-	public AbstractApplication(@Nonnull final String name) {
-		this(name, NO_ARGUMENTS);
+	/** No-arguments constructor. */
+	public AbstractApplication() {
+		this(NO_ARGUMENTS);
 	}
 
 	/**
-	 * Name arguments constructor.
-	 * @param name The name of the application.
+	 * Arguments constructor.
 	 * @param args The command line arguments.
 	 */
-	public AbstractApplication(@Nonnull final String name, @Nonnull final String[] args) {
-		this.name = requireNonNull(name);
+	public AbstractApplication(@Nonnull final String[] args) {
 		this.args = requireNonNull(args);
 	}
 
 	/**
-	 * Initializes the application. This method is called after construction but before application execution. This version does nothing.
-	 * @throws Exception Thrown if anything goes wrong.
+	 * {@inheritDoc}
+	 * @implSpec This version does nothing.
 	 */
+	@Override
 	public void initialize() throws Exception { //TODO create a flag that only allows initialization once
 	}
 
-	/**
-	 * Checks requirements, permissions, and expirations before starting.
-	 * @return <code>true</code> if the checks succeeded.
-	 */
+	@Override
 	public boolean canStart() {
 		final boolean isExpired = getExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
 		if(isExpired) {
@@ -129,20 +113,13 @@ public abstract class AbstractApplication implements Application, Clogged {
 		return true; //show that everything went OK
 	}
 
-	/**
-	 * Displays an error message to the user for an exception.
-	 * @param message The message to display.
-	 * @param throwable The condition that caused the error.
-	 */
+	@Override
 	public void displayError(@Nonnull final String message, @Nonnull final Throwable throwable) {
 		getLogger().error(message, throwable);
 		displayError(getDisplayErrorMessage(throwable)); //display an error to the user for the throwable
 	}
 
-	/**
-	 * Displays the given error to the user
-	 * @param message The error to display.
-	 */
+	@Override
 	public void displayError(final String message) {
 		System.err.println(message); //display the error in the error output
 	}
@@ -159,49 +136,6 @@ public abstract class AbstractApplication implements Application, Clogged {
 		} else { //for any another error
 			return throwable.getMessage() != null ? throwable.getMessage() : throwable.getClass().getName(); //get the throwable message or, on last resource, the name of the class
 		}
-	}
-
-	/**
-	 * Starts an application.
-	 * @param application The application to start.
-	 * @param args The command line arguments.
-	 * @return The application status.
-	 */
-	public static int run(final Application application, final String[] args) {
-		int result = 0; //start out assuming a neutral result TODO use a constant and a unique value
-		try {
-			initialize(application, args); //initialize the environment
-			application.initialize(); //initialize the application
-			if(application.canStart()) { //perform the pre-run checks; if everything went OK
-				result = application.main(); //run the application
-			} else { //if something went wrong
-				result = -1; //show that we couldn't start TODO use a constant and a unique value
-			}
-		} catch(final Throwable throwable) { //if there are any errors
-			result = -1; //show that there was an error TODO use a constant and a unique value
-			application.displayError(throwable); //report the error
-		}
-		if(result < 0) { //if we something went wrong, exit (if everything is going fine, keep running, because we may have a server or frame running)
-			try {
-				application.exit(result); //exit with the result (we can't just return, because the main frame, if initialized, will probably keep the thread from stopping)
-			} catch(final Throwable throwable) { //if there are any errors
-				result = -1; //show that there was an error during exit TODO use a constant and a unique value
-				application.displayError(throwable); //report the error
-			} finally {
-				System.exit(result); //provide a fail-safe way to exit		
-			}
-		}
-		return result; //always return the result		
-	}
-
-	/**
-	 * Initializes the environment for the application.
-	 * @param application The application to start.
-	 * @param args The command line arguments.
-	 * @throws Exception Thrown if anything goes wrong.
-	 */
-	protected static void initialize(final Application application, final String[] args) throws Exception {
-		CommandLineArguments.configureLog(args); //configure debugging based upon the command line arguments
 	}
 
 	/**
@@ -224,7 +158,7 @@ public abstract class AbstractApplication implements Application, Clogged {
 			try {
 				performExit(status); //perform the exit
 			} catch(final Throwable throwable) { //if there are any errors
-				displayError(throwable); //report the error
+				displayError("Error exiting.", throwable); //report the error TODO i18n
 			}
 			System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
 		}

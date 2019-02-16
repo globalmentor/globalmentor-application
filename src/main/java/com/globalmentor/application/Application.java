@@ -20,14 +20,25 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
 
+import javax.annotation.*;
+
+import org.fusesource.jansi.AnsiConsole;
+
 import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 
+import io.clogr.Clogged;
+
 /**
  * A general application.
+ * <p>
+ * To start an application, call the static {@link #start(Application)} method, passing it an application instance.
+ * </p>
+ * @apiNote Although an application implements {@link Runnable}, it should usually be started using {@link #start()}, which will eventually (depending on the
+ *          implementation) call {@link #run()}.
  * @author Garret Wilson
  */
-public interface Application extends Resource, Named<String> {
+public interface Application extends Runnable, Named<String>, Clogged {
 
 	/** An array containing no arguments. */
 	public static final String[] NO_ARGUMENTS = new String[0];
@@ -37,6 +48,16 @@ public interface Application extends Resource, Named<String> {
 
 	/** @return The command-line arguments of the application. */
 	public String[] getArgs();
+
+	/** @return The application version string . */
+	public String getVersion();
+
+	/**
+	 * Returns whether debug mode is enabled.
+	 * @apiNote Debug mode enables debug level logging and may also enable other debug functionality.
+	 * @return The state of debug mode.
+	 */
+	public boolean isDebug();
 
 	/**
 	 * Returns the application user preferences.
@@ -55,10 +76,14 @@ public interface Application extends Resource, Named<String> {
 	public void initialize() throws Exception;
 
 	/**
-	 * The main application method.
+	 * Starts the application
+	 * @implSpec The default implementation delegates to {@link #run()} and returns a status code of <code>0</code>.
 	 * @return The application status.
 	 */
-	public int main();
+	public default int start() {
+		run();
+		return 0;
+	}
 
 	/**
 	 * Checks requirements, permissions, and expirations before starting.
@@ -68,10 +93,11 @@ public interface Application extends Resource, Named<String> {
 
 	/**
 	 * Displays an error message to the user for an exception.
+	 * @param message The message to display.
 	 * @param throwable The condition that caused the error.
 	 */
 	@Deprecated
-	public void displayError(final Throwable throwable);
+	public void displayError(@Nonnull final String message, @Nonnull final Throwable throwable);
 
 	/**
 	 * Displays the given error to the user
@@ -94,5 +120,41 @@ public interface Application extends Resource, Named<String> {
 	 * @param status The exit status.
 	 */
 	public void exit(final int status);
+
+	/**
+	 * Starts an application.
+	 * @param application The application to start.
+	 * @return The application status.
+	 */
+	public static int start(final Application application) {
+		AnsiConsole.systemInstall();
+		try {
+			int result = 0; //start out assuming a neutral result TODO use a constant and a unique value
+			try {
+				application.initialize(); //initialize the application
+				if(application.canStart()) { //perform the pre-run checks; if everything went OK
+					result = application.start(); //run the application
+				} else { //if something went wrong
+					result = -1; //show that we couldn't start TODO use a constant and a unique value
+				}
+			} catch(final Throwable throwable) { //if there are any errors
+				result = -1; //show that there was an error TODO use a constant and a unique value
+				application.displayError("Error starting application.", throwable); //report the error TODO i18n
+			}
+			if(result < 0) { //if we something went wrong, exit (if everything is going fine, keep running, because we may have a server or frame running)
+				try {
+					application.exit(result); //exit with the result (we can't just return, because the main frame, if initialized, will probably keep the thread from stopping)
+				} catch(final Throwable throwable) { //if there are any errors
+					result = -1; //show that there was an error during exit TODO use a constant and a unique value
+					application.displayError("Error exiting application.", throwable); //report the error TODO i18n
+				} finally {
+					System.exit(result); //provide a fail-safe way to exit		
+				}
+			}
+			return result; //always return the result
+		} finally {
+			AnsiConsole.systemUninstall(); //TODO fix for daemons and GUIs, which remain running after started; maybe put this in some sort of dedicated exit method
+		}
+	}
 
 }
