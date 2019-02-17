@@ -5,11 +5,11 @@
 	<parent>
 		<groupId>com.globalmentor</groupId>
 		<artifactId>globalmentor-parent</artifactId>
-		<version>8.2.0</version>
+		<version>8.4.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.5.1-SNAPSHOT</version>
+	<version>0.6.0-SNAPSHOT</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
@@ -22,17 +22,47 @@
 		<url>https://bitbucket.org/globalmentor/globalmentor-application</url>
 	</scm>
 
+	<properties>
+		<maven.compiler.release>11</maven.compiler.release>
+		<clogr.version>0.7.0</clogr.version>
+		<confound.version>0.7.0-SNAPSHOT</confound.version>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-core</artifactId>
-			<version>0.5.3</version>
+			<version>0.5.7-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
-			<groupId>com.globalmentor</groupId>
-			<artifactId>globalmentor-log</artifactId>
-			<version>0.5.1-SNAPSHOT</version>
+			<groupId>io.clogr</groupId>
+			<artifactId>clogr</artifactId>
+			<version>${clogr.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.clogr</groupId>
+			<artifactId>clogr-logback</artifactId>
+			<version>${clogr.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.confound</groupId>
+			<artifactId>confound-file</artifactId>
+			<version>${confound.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>info.picocli</groupId>
+			<artifactId>picocli</artifactId>
+			<version>3.9.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.fusesource.jansi</groupId>
+			<artifactId>jansi</artifactId>
+			<version>1.17.1</version>
 		</dependency>
 	</dependencies>
 </project>
