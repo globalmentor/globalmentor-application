@@ -24,32 +24,27 @@
 
 	<properties>
 		<maven.compiler.release>11</maven.compiler.release>
-		<clogr.version>0.8.0-SNAPSHOT</clogr.version>
-		<confound.version>0.7.0-SNAPSHOT</confound.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.globalmentor</groupId>
-			<artifactId>globalmentor-base</artifactId>
+			<artifactId>globalmentor-core</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>io.clogr</groupId>
 			<artifactId>clogr</artifactId>
-			<version>${clogr.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>io.clogr</groupId>
 			<artifactId>clogr-logback</artifactId>
-			<version>${clogr.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>io.confound</groupId>
 			<artifactId>confound-file</artifactId>
-			<version>${confound.version}</version>
 		</dependency>
 
 		<dependency>
