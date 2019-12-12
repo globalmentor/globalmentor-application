@@ -161,7 +161,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	@Override
 	public int start() {
-		CommandLine.run(this, getArgs()); //run the application via picocli instead of using the default version
+		new CommandLine(this).execute(getArgs()); //run the application via picocli instead of using the default version
 		return 0; //TODO use constant
 	}
 
