@@ -109,19 +109,23 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public int start();
 
 	/**
-	 * Displays an error message to the user for an exception.
+	 * Reports an error condition to the user. A message will be added as appropriate.
+	 * @param throwable The condition that caused the error.
+	 */
+	public void reportError(@Nonnull final Throwable throwable);
+
+	/**
+	 * Reports an error message to the user related to an exception.
 	 * @param message The message to display.
 	 * @param throwable The condition that caused the error.
 	 */
-	@Deprecated
-	public void displayError(@Nonnull final String message, @Nonnull final Throwable throwable);
+	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable);
 
 	/**
-	 * Displays the given error to the user
+	 * Reports the given error message to the user
 	 * @param message The error to display.
 	 */
-	@Deprecated
-	public void displayError(final String message);
+	public void reportError(@Nonnull final String message);
 
 	/**
 	 * Starts an application. If this method returns, the program is still running.
@@ -142,14 +146,17 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public static void start(@Nonnull final Application application) {
 		int result = EXIT_CODE_OK; //start out assuming a neutral result
 		try {
-			application.initialize(); //initialize the application
-			result = application.start();
-		} catch(final Throwable throwable) { //if there are any errors
-			result = EXIT_CODE_SOFTWARE; //show that there was an error
-			application.displayError("Error starting application.", throwable); //report the error TODO i18n
-		}
-		if(result >= 0) { //if we should not continue running (e.g. the application does not have a main frame showing or a daemon running)
-			application.end(result);
+			try {
+				application.initialize(); //initialize the application
+				result = application.start();
+			} catch(final Throwable throwable) { //if there are any errors
+				result = EXIT_CODE_SOFTWARE; //show that there was an error
+				application.reportError("Error starting application.", throwable); //report the error TODO i18n
+			}
+		} finally {
+			if(result >= 0) { //if we should not continue running (e.g. the application does not have a main frame showing or a daemon running)
+				application.end(result);
+			}
 		}
 	}
 

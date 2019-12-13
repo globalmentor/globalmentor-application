@@ -30,6 +30,7 @@ import com.globalmentor.net.*;
 
 /**
  * An abstract implementation of an application that by default is a console application.
+ * @implSpec Errors are written in simple form to {@link System#err}.
  * @implSpec The default preference node is based upon the implementing application class.
  * @author Garret Wilson
  */
@@ -143,40 +144,61 @@ public abstract class AbstractApplication implements Application {
 	protected boolean canStart() {
 		final boolean isExpired = getExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
 		if(isExpired) {
-			displayError("This version of " + getName() + " has expired."); //TODO i18n
+			reportError("This version of " + getName() + " has expired."); //TODO i18n; improve error handling (should probably report error elsewhere)
 			return false;
 		}
 		return true; //show that everything went OK
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
+	 */
 	@Override
-	public void displayError(@Nonnull final String message, @Nonnull final Throwable throwable) {
-		getLogger().error(message, throwable);
-		displayError(getDisplayErrorMessage(throwable)); //display an error to the user for the throwable
+	public void reportError(final Throwable throwable) {
+		reportError(toErrorMessage(throwable), throwable);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation calls {@link #reportError(String)} and then prints a stack trace to {@link System#err}.
+	 * @see Throwable#printStackTrace(PrintStream)
+	 */
 	@Override
-	public void displayError(final String message) {
+	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+		reportError(message);
+		throwable.printStackTrace(System.err);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation writes the message to {@link System#err}.
+	 */
+	@Override
+	public void reportError(final String message) {
 		System.err.println(message); //display the error in the error output
 	}
 
 	/**
-	 * Constructs a user-presentable error message based on an exception. In most cases this is {@link Throwable#getMessage()}.
+	 * Constructs a user-presentable error message based on an exception.
+	 * @implSpec This version returns constructed messages for exceptions known not to contain useful information. In most cases it returns
+	 *           {@link Throwable#getMessage()}.
 	 * @param throwable The condition that caused the error.
 	 * @return The error message.
 	 * @see Throwable#getMessage()
 	 */
-	protected static String getDisplayErrorMessage(final Throwable throwable) {
-		if(throwable instanceof FileNotFoundException) { //if a file was not found
+	protected @Nonnull String toErrorMessage(final Throwable throwable) {
+		if(throwable instanceof FileNotFoundException) {
 			return "File not found: " + throwable.getMessage(); //create a message for a file not found TODO i18n
-		} else { //for any another error
-			return throwable.getMessage() != null ? throwable.getMessage() : throwable.getClass().getName(); //get the throwable message or, on last resource, the name of the class
 		}
+		final String message = throwable.getMessage();
+		return message != null ? message : throwable.getClass().getName(); //if there is no message, return the simple class name
 	}
 
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
+	 * @implSpec If exit is allowed to occur, this method will exit even if there was an error in calling {@link #exit(int)}.
 	 * @param status The exit status.
 	 * @see #canEnd()
 	 * @see #exit(int)
@@ -187,7 +209,7 @@ public abstract class AbstractApplication implements Application {
 			try {
 				exit(status); //perform the exit
 			} catch(final Throwable throwable) { //if there are any errors
-				displayError("Error exiting.", throwable); //report the error TODO i18n
+				reportError("Error exiting.", throwable); //report the error TODO i18n
 			}
 			System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
 		}
