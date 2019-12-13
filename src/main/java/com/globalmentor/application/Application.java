@@ -124,7 +124,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public void displayError(final String message);
 
 	/**
-	 * Starts an application.
+	 * Starts an application. If this method returns, the program is still running.
 	 * <ol>
 	 * <li>Calls {@link #initialize()}.</li>
 	 * <li>Calls {@link #start()}, which eventually calls {@link #run()}. If a non-zero exit code is returned, the application will end. An exit code of
@@ -134,13 +134,13 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * <li>If a positive exit code was given, calls {@link #end(int)} to exit the application. (A status of {@value #EXIT_CODE_CONTINUE} indicates that the
 	 * program continues to run.)</li>
 	 * </ol>
-	 * @apiNote If the program chooses to continue running, it should call {@link #end(int)} at some point when it is ready to stop so that all needed shutdown
-	 *          activities will occur.
+	 * @apiNote Except for GUI programs and daemons, this method will never return, as it will eventually call {@link #end(int)} which will immediately exit the
+	 *          program. If the program chooses to continue running, it should call {@link #end(int)} at some point when it is ready to stop so that all needed
+	 *          shutdown activities will occur.
 	 * @param application The application to start.
-	 * @return The application status, which may be {@value #EXIT_CODE_CONTINUE} if the program is still running.
 	 */
-	public static int start(final Application application) {
-		int result = EXIT_CODE_OK; //start out assuming a neutral result TODO use a constant and a unique value
+	public static void start(@Nonnull final Application application) {
+		int result = EXIT_CODE_OK; //start out assuming a neutral result
 		try {
 			application.initialize(); //initialize the application
 			result = application.start();
@@ -151,7 +151,6 @@ public interface Application extends Runnable, Named<String>, Clogged {
 		if(result >= 0) { //if we should not continue running (e.g. the application does not have a main frame showing or a daemon running)
 			application.end(result);
 		}
-		return result; //always return the result
 	}
 
 	/**
@@ -165,19 +164,26 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	}
 
 	/**
-	 * Ends the application with the given status. This method first checks to see if the program can end.
+	 * Ends the application with the given status. This method first checks to see if the program can end. If the status is not {@value #EXIT_CODE_OK}, the
+	 * application will then exit immediately.
+	 * @apiNote This method normally will never return.
 	 * @apiNote To add to exit functionality, {@link #exit(int)} should be overridden rather than this method.
+	 * @apiNote This method explicitly does not accept {@value #EXIT_CODE_CONTINUE}, as continuing and ending contradictory concepts.
 	 * @implNote This method should eventually delegate to {@link #exit(int)}.
-	 * @param status The exit status.
+	 * @param status The exit status, which must not be negative.
 	 * @see #exit(int)
+	 * @throws IllegalArgumentException if the given status is negative.
 	 */
-	public void end(final int status);
+	public void end(@Nonnegative final int status);
 
 	/**
 	 * Exits the application immediately with the given status without checking to see if exit should be performed.
+	 * @apiNote This method normally will never return.
 	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred.
+	 * @implSpec The default implementation delegates to {@link System#exit(int)}.
 	 * @param status The exit status.
 	 * @throws SecurityException if a security manager exists and its {@link SecurityManager#checkExit(int)} method doesn't allow exit with the specified status.
+	 * @see System#exit(int)
 	 */
 	public default void exit(final int status) {
 		System.exit(status); //close the program with the given exit status		

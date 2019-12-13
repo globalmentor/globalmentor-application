@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.Conditions.*;
 import static java.util.Objects.*;
 
 import java.io.*;
@@ -181,6 +182,7 @@ public abstract class AbstractApplication implements Application {
 	 * @see #exit(int)
 	 */
 	public final void end(final int status) {
+		checkArgumentNotNegative(status);
 		if(canEnd()) { //if we can exit
 			try {
 				exit(status); //perform the exit
