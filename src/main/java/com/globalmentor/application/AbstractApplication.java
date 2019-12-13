@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.Conditions.*;
 import static java.util.Objects.*;
 
 import java.io.*;
@@ -103,8 +104,43 @@ public abstract class AbstractApplication implements Application {
 	public void initialize() throws Exception { //TODO create a flag that only allows initialization once
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @apiNote To change how the main application is executed, normally {@link #execute()} should be overridden and not this method.
+	 * @implSpec The default implementation delegates calls {@link #canStart()} and, if it returns <code>true</code>, delegates to {@link #execute()}.
+	 * @see #canStart()
+	 * @see #execute()
+	 */
 	@Override
-	public boolean canStart() {
+	public int start() {
+		return canStart() ? execute() : EXIT_CODE_SOFTWARE;
+	}
+
+	/**
+	 * Main execution implementation.
+	 * @implSpec The default implementation delegates to {@link #run()} and returns a status code of {@value #EXIT_CODE_OK}.
+	 * @implNote Normally this method delegates to {@link #run()} for default functionality, but may delegate directly to other methods, e.g. representing CLI
+	 *           commands.
+	 * @return The application status:
+	 *         <dl>
+	 *         <dt>{@value #EXIT_CODE_OK}</dt>
+	 *         <dd>Success.</dd>
+	 *         <dt>Any positive exit code.</dt>
+	 *         <dd>There was an error and the application should exit.</dd>
+	 *         <dt>{@value #EXIT_CODE_CONTINUE}</dt>
+	 *         <dd>The application should not exit but continue running, such as for a GUI or daemon application.</dd>
+	 *         </dl>
+	 */
+	protected int execute() {
+		run();
+		return EXIT_CODE_OK;
+	}
+
+	/**
+	 * Checks requirements, permissions, and expirations before starting.
+	 * @return <code>true</code> if the checks succeeded.
+	 */
+	protected boolean canStart() {
 		final boolean isExpired = getExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
 		if(isExpired) {
 			displayError("This version of " + getName() + " has expired."); //TODO i18n
@@ -139,24 +175,17 @@ public abstract class AbstractApplication implements Application {
 	}
 
 	/**
-	 * Determines whether the application can exit. This method may query the user. If the application has been modified, the configuration is saved if possible.
-	 * @return <code>true</code> if the application can exit, else <code>false</code>.
-	 */
-	protected boolean canExit() {
-		return true; //show that we can exit
-	}
-
-	/**
-	 * Exits the application with the given status. This method first checks to see if exit can occur.
-	 * @apiNote To add to exit functionality, {@link #performExit(int)} should be overridden rather than this method.
+	 * {@inheritDoc}
+	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
 	 * @param status The exit status.
-	 * @see #canExit()
-	 * @see #performExit(int)
+	 * @see #canEnd()
+	 * @see #exit(int)
 	 */
-	public final void exit(final int status) {
-		if(canExit()) { //if we can exit
+	public final void end(final int status) {
+		checkArgumentNotNegative(status);
+		if(canEnd()) { //if we can exit
 			try {
-				performExit(status); //perform the exit
+				exit(status); //perform the exit
 			} catch(final Throwable throwable) { //if there are any errors
 				displayError("Error exiting.", throwable); //report the error TODO i18n
 			}
@@ -165,12 +194,11 @@ public abstract class AbstractApplication implements Application {
 	}
 
 	/**
-	 * Exits the application with the given status without checking to see if exit should be performed.
-	 * @param status The exit status.
-	 * @throws Exception Thrown if anything goes wrong.
+	 * Determines whether the application can end. This method may query the user. If the application has been modified, the configuration is saved if possible.
+	 * @return <code>true</code> if the application can end, else <code>false</code>.
 	 */
-	protected void performExit(final int status) throws Exception {
-		System.exit(status); //close the program with the given exit status		
+	protected boolean canEnd() {
+		return true; //show that we can exit
 	}
 
 }
