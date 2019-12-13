@@ -22,8 +22,6 @@ import java.util.prefs.Preferences;
 
 import javax.annotation.*;
 
-import org.fusesource.jansi.AnsiConsole;
-
 import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 
@@ -35,10 +33,30 @@ import io.clogr.Clogged;
  * To start an application, call the static {@link #start(Application)} method, passing it an application instance.
  * </p>
  * @apiNote Although an application implements {@link Runnable}, it should usually be started using {@link #start()}, which will eventually (depending on the
- *          implementation) call {@link #run()}.
+ *          implementation) call {@link #run()}. The {@link #start(Application)} takes care of calling the correct entry point.
  * @author Garret Wilson
  */
 public interface Application extends Runnable, Named<String>, Clogged {
+
+	/** Exit code indicating a successful termination. */
+	public static final int EXIT_CODE_OK = 0;
+
+	/**
+	 * Exit code indicating execution failure.
+	 * @see <a href="https://picocli.info/#_exception_exit_codes">picocli § 9.3. Exception Exit Codes</a>
+	 * @see <a href="https://stackoverflow.com/a/40484670/421049">note on error codes in practice</a>
+	 */
+	public static final int EXIT_CODE_SOFTWARE = 1;
+
+	/**
+	 * Exit code indicating incorrect command-line usage.
+	 * @see <a href="https://picocli.info/#_exception_exit_codes">picocli § 9.3. Exception Exit Codes</a>
+	 * @see <a href="https://stackoverflow.com/a/40484670/421049">note on error codes in practice</a>
+	 */
+	public static final int EXIT_CODE_USAGE = 2;
+
+	/** Pseudo exit code indicating that the application should not exit immediately, e.g. for a GUI or daemon application. */
+	public static final int EXIT_CODE_CONTINUE = -1;
 
 	/** An array containing no arguments. */
 	public static final String[] NO_ARGUMENTS = new String[0];
@@ -76,20 +94,19 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public void initialize() throws Exception;
 
 	/**
-	 * Starts the application
-	 * @implSpec The default implementation delegates to {@link #run()} and returns a status code of <code>0</code>.
-	 * @return The application status.
+	 * Starts the application if it can be started.
+	 * @implNote This method should eventually delegate to {@link #run()}.
+	 * @return The application status:
+	 *         <dl>
+	 *         <dt>{@value #EXIT_CODE_OK}</dt>
+	 *         <dd>Success.</dd>
+	 *         <dt>Any positive exit code.</dt>
+	 *         <dd>There was an error and the application should exit.</dd>
+	 *         <dt>{@value #EXIT_CODE_CONTINUE}</dt>
+	 *         <dd>The application should not exit but continue running, such as for a GUI or daemon application.</dd>
+	 *         </dl>
 	 */
-	public default int start() {
-		run();
-		return 0;
-	}
-
-	/**
-	 * Checks requirements, permissions, and expirations before starting.
-	 * @return <code>true</code> if the checks succeeded.
-	 */
-	public boolean canStart();
+	public int start();
 
 	/**
 	 * Displays an error message to the user for an exception.
@@ -107,54 +124,63 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public void displayError(final String message);
 
 	/**
-	 * Exits the application with no status.
-	 * @implSpec The default implementation delegates to {@link #exit(int)} with a value of <code>0</code>.
-	 * @see #exit(int)
+	 * Starts an application.
+	 * <ol>
+	 * <li>Calls {@link #initialize()}.</li>
+	 * <li>Calls {@link #start()}, which eventually calls {@link #run()}. If a non-zero exit code is returned, the application will end. An exit code of
+	 * <code>-1</code> indicates that the application should not exit after running.</li>
+	 * <li>Normally {@link #start()} delegates to {@link #run()} for default functionality, but may delegate directly to other methods, e.g. representing CLI
+	 * commands.</li>
+	 * <li>If a positive exit code was given, calls {@link #end(int)} to exit the application. (A status of {@value #EXIT_CODE_CONTINUE} indicates that the
+	 * program continues to run.)</li>
+	 * </ol>
+	 * @apiNote If the program chooses to continue running, it should call {@link #end(int)} at some point when it is ready to stop so that all needed shutdown
+	 *          activities will occur.
+	 * @param application The application to start.
+	 * @return The application status, which may be {@value #EXIT_CODE_CONTINUE} if the program is still running.
 	 */
-	public default void exit() {
-		exit(0); //exit with no status		
+	public static int start(final Application application) {
+		int result = EXIT_CODE_OK; //start out assuming a neutral result TODO use a constant and a unique value
+		try {
+			application.initialize(); //initialize the application
+			result = application.start();
+		} catch(final Throwable throwable) { //if there are any errors
+			result = EXIT_CODE_SOFTWARE; //show that there was an error
+			application.displayError("Error starting application.", throwable); //report the error TODO i18n
+		}
+		if(result >= 0) { //if we should not continue running (e.g. the application does not have a main frame showing or a daemon running)
+			application.end(result);
+		}
+		return result; //always return the result
 	}
 
 	/**
-	 * Exits the application with the given status. This method first checks to see if exit can occur.
-	 * @param status The exit status.
+	 * Ends the application with a status of success.
+	 * @implSpec The default implementation delegates to {@link #end(int)} with a value of {@value #EXIT_CODE_OK}.
+	 * @implNote This method should eventually delegate to {@link #exit(int)}.
+	 * @see #end(int)
 	 */
-	public void exit(final int status);
+	public default void end() {
+		end(EXIT_CODE_OK); //exit with no status		
+	}
 
 	/**
-	 * Starts an application.
-	 * @param application The application to start.
-	 * @return The application status.
+	 * Ends the application with the given status. This method first checks to see if the program can end.
+	 * @apiNote To add to exit functionality, {@link #exit(int)} should be overridden rather than this method.
+	 * @implNote This method should eventually delegate to {@link #exit(int)}.
+	 * @param status The exit status.
+	 * @see #exit(int)
 	 */
-	public static int start(final Application application) {
-		AnsiConsole.systemInstall();
-		try {
-			int result = 0; //start out assuming a neutral result TODO use a constant and a unique value
-			try {
-				application.initialize(); //initialize the application
-				if(application.canStart()) { //perform the pre-run checks; if everything went OK
-					result = application.start(); //run the application
-				} else { //if something went wrong
-					result = -1; //show that we couldn't start TODO use a constant and a unique value
-				}
-			} catch(final Throwable throwable) { //if there are any errors
-				result = -1; //show that there was an error TODO use a constant and a unique value
-				application.displayError("Error starting application.", throwable); //report the error TODO i18n
-			}
-			if(result < 0) { //if we something went wrong, exit (if everything is going fine, keep running, because we may have a server or frame running)
-				try {
-					application.exit(result); //exit with the result (we can't just return, because the main frame, if initialized, will probably keep the thread from stopping)
-				} catch(final Throwable throwable) { //if there are any errors
-					result = -1; //show that there was an error during exit TODO use a constant and a unique value
-					application.displayError("Error exiting application.", throwable); //report the error TODO i18n
-				} finally {
-					System.exit(result); //provide a fail-safe way to exit		
-				}
-			}
-			return result; //always return the result
-		} finally {
-			AnsiConsole.systemUninstall(); //TODO fix for daemons and GUIs, which remain running after started; maybe put this in some sort of dedicated exit method
-		}
+	public void end(final int status);
+
+	/**
+	 * Exits the application immediately with the given status without checking to see if exit should be performed.
+	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred.
+	 * @param status The exit status.
+	 * @throws SecurityException if a security manager exists and its {@link SecurityManager#checkExit(int)} method doesn't allow exit with the specified status.
+	 */
+	public default void exit(final int status) {
+		System.exit(status); //close the program with the given exit status		
 	}
 
 }

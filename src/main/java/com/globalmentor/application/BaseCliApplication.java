@@ -22,6 +22,7 @@ import java.io.*;
 
 import javax.annotation.*;
 
+import org.fusesource.jansi.AnsiConsole;
 import org.slf4j.event.Level;
 
 import io.clogr.*;
@@ -67,6 +68,7 @@ import picocli.CommandLine.*;
  * <dt><code>--debug</code>, <code>-d</code></dt>
  * <dd>Turns on debug level logging.</dd>
  * </dl>
+ * @implSpec This implementation adds ANSI support via Jansi.
  * @author Garret Wilson
  */
 //@Command(name = "foobar", description = "FooBar application.", versionProvider = MetadataProvider.class, mixinStandardHelpOptions = true)
@@ -159,10 +161,23 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		updateLogLevel(); //update the log level based upon the debug setting
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
+	 */
 	@Override
-	public int start() {
-		new CommandLine(this).execute(getArgs()); //run the application via picocli instead of using the default version
-		return 0; //TODO use constant
+	public void initialize() throws Exception {
+		super.initialize();
+		AnsiConsole.systemInstall();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
+	 */
+	@Override
+	protected int execute() {
+		return new CommandLine(this).execute(getArgs()); //run the application via picocli instead of using the default version
 	}
 
 	/**
@@ -174,6 +189,16 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	@Override
 	public void run() {
 		CommandLine.usage(this, System.out);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
+	 */
+	@Override
+	public void exit(int status) {
+		AnsiConsole.systemUninstall();
+		super.exit(status);
 	}
 
 	/**
