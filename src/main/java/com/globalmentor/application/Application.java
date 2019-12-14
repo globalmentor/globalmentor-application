@@ -109,25 +109,6 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public int start();
 
 	/**
-	 * Reports an error condition to the user. A message will be added as appropriate.
-	 * @param throwable The condition that caused the error.
-	 */
-	public void reportError(@Nonnull final Throwable throwable);
-
-	/**
-	 * Reports an error message to the user related to an exception.
-	 * @param message The message to display.
-	 * @param throwable The condition that caused the error.
-	 */
-	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable);
-
-	/**
-	 * Reports the given error message to the user
-	 * @param message The error to display.
-	 */
-	public void reportError(@Nonnull final String message);
-
-	/**
 	 * Starts an application. If this method returns, the program is still running.
 	 * <ol>
 	 * <li>Calls {@link #initialize()}.</li>
@@ -195,5 +176,24 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public default void exit(final int status) {
 		System.exit(status); //close the program with the given exit status		
 	}
+
+	/**
+	 * Reports an error condition to the user. A message will be added as appropriate.
+	 * @param throwable The condition that caused the error.
+	 */
+	public void reportError(@Nonnull final Throwable throwable);
+
+	/**
+	 * Reports an error message to the user related to an exception.
+	 * @param message The message to display.
+	 * @param throwable The condition that caused the error.
+	 */
+	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable);
+
+	/**
+	 * Reports the given error message to the user
+	 * @param message The error to display.
+	 */
+	public void reportError(@Nonnull final String message);
 
 }

@@ -20,6 +20,7 @@ import static com.globalmentor.java.Conditions.*;
 import static java.util.Objects.*;
 
 import java.io.*;
+import java.nio.file.NoSuchFileException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
@@ -152,6 +153,34 @@ public abstract class AbstractApplication implements Application {
 
 	/**
 	 * {@inheritDoc}
+	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
+	 * @implSpec If exit is allowed to occur, this method will exit even if there was an error in calling {@link #exit(int)}.
+	 * @param status The exit status.
+	 * @see #canEnd()
+	 * @see #exit(int)
+	 */
+	public final void end(final int status) {
+		checkArgumentNotNegative(status);
+		if(canEnd()) { //if we can exit
+			try {
+				exit(status); //perform the exit
+			} catch(final Throwable throwable) { //if there are any errors
+				reportError("Error exiting.", throwable); //report the error TODO i18n
+			}
+			System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
+		}
+	}
+
+	/**
+	 * Determines whether the application can end. This method may query the user. If the application has been modified, the configuration is saved if possible.
+	 * @return <code>true</code> if the application can end, else <code>false</code>.
+	 */
+	protected boolean canEnd() {
+		return true; //show that we can exit
+	}
+
+	/**
+	 * {@inheritDoc}
 	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
 	 */
 	@Override
@@ -189,38 +218,12 @@ public abstract class AbstractApplication implements Application {
 	 */
 	protected @Nonnull String toErrorMessage(final Throwable throwable) {
 		if(throwable instanceof FileNotFoundException) {
-			return "File not found: " + throwable.getMessage(); //create a message for a file not found TODO i18n
+			return "File or directory not found: " + throwable.getMessage(); //TODO i18n
+		} else if(throwable instanceof NoSuchFileException) {
+			return "No such file or directory: " + throwable.getMessage(); //TODO i18n
 		}
 		final String message = throwable.getMessage();
 		return message != null ? message : throwable.getClass().getName(); //if there is no message, return the simple class name
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
-	 * @implSpec If exit is allowed to occur, this method will exit even if there was an error in calling {@link #exit(int)}.
-	 * @param status The exit status.
-	 * @see #canEnd()
-	 * @see #exit(int)
-	 */
-	public final void end(final int status) {
-		checkArgumentNotNegative(status);
-		if(canEnd()) { //if we can exit
-			try {
-				exit(status); //perform the exit
-			} catch(final Throwable throwable) { //if there are any errors
-				reportError("Error exiting.", throwable); //report the error TODO i18n
-			}
-			System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
-		}
-	}
-
-	/**
-	 * Determines whether the application can end. This method may query the user. If the application has been modified, the configuration is saved if possible.
-	 * @return <code>true</code> if the application can end, else <code>false</code>.
-	 */
-	protected boolean canEnd() {
-		return true; //show that we can exit
 	}
 
 }

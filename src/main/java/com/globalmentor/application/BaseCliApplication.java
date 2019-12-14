@@ -23,6 +23,7 @@ import java.io.*;
 import javax.annotation.*;
 
 import org.fusesource.jansi.AnsiConsole;
+import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import io.clogr.*;
@@ -177,7 +178,12 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Override
 	protected int execute() {
-		return new CommandLine(this).execute(getArgs()); //run the application via picocli instead of using the default version
+		final IExecutionExceptionHandler errorHandler = (exception, commandLine, parseResult) -> {
+			reportError(exception);
+			return EXIT_CODE_SOFTWARE;
+		};
+		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
+		return new CommandLine(this).setExecutionExceptionHandler(errorHandler).execute(getArgs());
 	}
 
 	/**
@@ -199,6 +205,37 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	public void exit(int status) {
 		AnsiConsole.systemUninstall();
 		super.exit(status);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
+	 */
+	@Override
+	public void reportError(final Throwable throwable) {
+		reportError(toErrorMessage(throwable), throwable);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation calls {@link #reportError(String)}, and then logs both the error and exception using {@link Logger#debug(String)}.
+	 * @implNote Double logging allows the message to be presented to the user at {@link Level#INFO} level, while still providing a stack trace at
+	 *           {@link Level#DEBUG} level, which is likely only enabled in debug mode.
+	 * @see Throwable#printStackTrace(PrintStream)
+	 */
+	@Override
+	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+		reportError(message);
+		getLogger().debug("{}", message, throwable);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation logs the error using Logger#error(String).
+	 */
+	@Override
+	public void reportError(final String message) {
+		getLogger().error("{}", message);
 	}
 
 	/**
