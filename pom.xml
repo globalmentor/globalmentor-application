@@ -9,7 +9,7 @@
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.7.0</version>
+	<version>0.7.5-SNAPSHOT</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
