@@ -16,8 +16,6 @@
 
 package com.globalmentor.application;
 
-import static java.util.Objects.*;
-
 import java.io.*;
 
 import javax.annotation.*;
@@ -31,29 +29,29 @@ import io.confound.config.ConfigurationException;
 import io.confound.config.file.ResourcesConfigurationManager;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
+import picocli.CommandLine.Model.CommandSpec;
 
 /**
  * Base implementation for facilitating creation of a CLI application.
  * <p>
- * A concrete application class should create a static <code>MetadataProvider</code> class (an inner class is recommended) extending the abstract metadata
- * provider class, specifying the class of the concrete application itself. This class expects a configuration file with the same name as the concrete
- * application class with a base extension of <code>-config</code>, such as <code>ExampleApp-config.properties</code>, loaded via Confound from the resources in
- * the same path as the application class. For example:
+ * A subclass should annotate itself as the main command, e.g.:
+ * </p>
+ * 
+ * <pre>
+ * {@code
+ * &#64;Command(name = "foobar", description = "FooBar application.")
+ * }
+ * </pre>
+ * <p>
+ * This class expects a configuration file with the same name as the concrete application class (the subclass of this class) with a base extension of
+ * <code>-config</code>, loaded via Confound from the resources in the same path as the application class. For example the following might be stored as
+ * <code>ExampleApp-config.properties</code>:
  * </p>
  * 
  * <pre>
  * {@code
  * name=${project.name}
  * version=${project.version}
- * }
- * </pre>
- * <p>
- * The provider class should be specified as the version provider, e.g.:
- * </p>
- * 
- * <pre>
- * {@code
- * &#64;Command(name = "foobar", description = "FooBar application.", versionProvider = MetadataProvider.class, mixinStandardHelpOptions = true)
  * }
  * </pre>
  * 
@@ -72,7 +70,7 @@ import picocli.CommandLine.*;
  * @implSpec This implementation adds ANSI support via Jansi.
  * @author Garret Wilson
  */
-//@Command(name = "foobar", description = "FooBar application.", versionProvider = MetadataProvider.class, mixinStandardHelpOptions = true)
+@Command(versionProvider = BaseCliApplication.MetadataProvider.class, mixinStandardHelpOptions = true)
 public abstract class BaseCliApplication extends AbstractApplication {
 
 	/** The configuration key containing the version of the program. */
@@ -239,8 +237,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
-	 * Strategy for retrieving the application name and version from the configuration. Each application should extend this class and pass it the concrete
-	 * application class in the constructor.
+	 * Strategy for retrieving the application name and version from the configuration.
 	 * <p>
 	 * This class expects a configuration file with the same name as the application class indicated in the constructor with a base extension of
 	 * <code>-config</code>, such as <code>ExampleApp-config.properties</code>, loaded via Confound from the resources in the same path as the application class.
@@ -256,9 +253,16 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * 
 	 * @author Garret Wilson
 	 */
-	protected static abstract class AbstractMetadataProvider implements IVersionProvider {
+	protected static class MetadataProvider implements IVersionProvider {
 
-		private final Class<? extends Application> applicationClass;
+		/**
+		 * Information on the command with which this provider is associated.
+		 * @apiNote Injected by Picocli.
+		 * @implNote This implementation uses the user object associated with the command for looking up resources.
+		 * @see CommandSpec#userObject()
+		 */
+		@Spec
+		private CommandSpec commandSpec;
 
 		/**
 		 * {@inheritDoc}
@@ -269,16 +273,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		 */
 		@Override
 		public String[] getVersion() throws Exception {
-			return new String[] {ResourcesConfigurationManager.loadConfigurationForClass(applicationClass)
+			return new String[] {ResourcesConfigurationManager.loadConfigurationForClass(commandSpec.userObject().getClass())
 					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException).getString(CONFIG_KEY_VERSION)};
-		}
-
-		/**
-		 * Application class constructor.
-		 * @param applicationClass The given application class for relative look up of configuration resources.
-		 */
-		public AbstractMetadataProvider(@Nonnull final Class<? extends Application> applicationClass) {
-			this.applicationClass = requireNonNull(applicationClass);
 		}
 
 	}
