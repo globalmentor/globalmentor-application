@@ -111,6 +111,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		}
 	}
 
+	private final Level defaultLogLevel;
+
 	private boolean debug;
 
 	@Override
@@ -128,9 +130,12 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		updateLogLevel();
 	}
 
-	/** Updates the log level based upon the current debug setting. The current debug setting remains unchanged. */
+	/**
+	 * Updates the log level based upon the current debug setting. The current debug setting remains unchanged.
+	 * @implSpec If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 */
 	protected void updateLogLevel() {
-		final Level logLevel = debug ? Level.DEBUG : Level.WARN; //TODO default to INFO level when we provide a log output (e.g. to file) option
+		final Level logLevel = debug ? Level.DEBUG : defaultLogLevel;
 
 		/*TODO determine additional logging configuration, including explicit log level requested, and log file requested; code from legacy CommandLineArguments
 		Log.Level logLevel = getOption(arguments, Switch.LOG_LEVEL, Log.Level.class); //get the explicit log level, if any
@@ -153,10 +158,21 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * Arguments constructor.
+	 * @implSpec The {@link Level#WARN} log level is used by default if no other log level-related options are indicated.
 	 * @param args The command line arguments.
 	 */
 	public BaseCliApplication(@Nonnull final String[] args) {
+		this(args, Level.WARN);
+	}
+
+	/**
+	 * Arguments constructor.
+	 * @param args The command line arguments.
+	 * @param defaultLogLevel The default log level to use if no other log level-related options are indicated.
+	 */
+	public BaseCliApplication(@Nonnull final String[] args, final Level defaultLogLevel) {
 		super(args);
+		this.defaultLogLevel = defaultLogLevel;
 		updateLogLevel(); //update the log level based upon the debug setting
 	}
 
