@@ -122,7 +122,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * Enables or disables debug mode, which is disabled by default.
 	 * @param debug The new state of debug mode.
 	 */
-	@Option(names = {"--debug", "-d"}, description = "Turns on debug level logging.")
+	@Option(names = {"--debug", "-d"}, description = "Turns on debug level logging.", scope = ScopeType.INHERIT)
 	protected void setDebug(final boolean debug) {
 		this.debug = debug;
 		updateLogLevel();
