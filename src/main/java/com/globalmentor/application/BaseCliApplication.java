@@ -65,7 +65,9 @@ import picocli.CommandLine.Model.CommandSpec;
  * </p>
  * <dl>
  * <dt><code>--debug</code>, <code>-d</code></dt>
- * <dd>Turns on debug level logging.</dd>
+ * <dd>Turns on debug mode and enables debug level logging.</dd>
+ * <dt><code>--trace</code></dt>
+ * <dd>Enables trace level logging.</dd>
  * </dl>
  * @implSpec This implementation adds ANSI support via Jansi.
  * @author Garret Wilson
@@ -111,6 +113,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		}
 	}
 
+	private final Level defaultLogLevel;
+
 	private boolean debug;
 
 	@Override
@@ -119,44 +123,69 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
-	 * Enables or disables debug mode, which is disabled by default.
+	 * Enables or disables debug mode and debug level logging, which is disabled by default.
 	 * @param debug The new state of debug mode.
 	 */
-	@Option(names = {"--debug", "-d"}, description = "Turns on debug level logging.")
+	@Option(names = {"--debug", "-d"}, description = "Turns on debug mode and enables debug level logging.", scope = ScopeType.INHERIT)
 	protected void setDebug(final boolean debug) {
 		this.debug = debug;
 		updateLogLevel();
 	}
 
-	/** Updates the log level based upon the current debug setting. The current debug setting remains unchanged. */
+	private boolean trace;
+
+	/** @return Whether trace-level logging has been requested. */
+	private boolean isTrace() {
+		return trace;
+	}
+
+	/**
+	 * Enables or disables trace level logging, which is disabled by default.
+	 * @apiNote This method does not turn on debug mode, so if debug mode is desired along with trace logging, be sure and call {@link #setDebug(boolean)} as
+	 *          well.
+	 * @param trace The new state of trace mode.
+	 */
+	@Option(names = {"--trace"}, description = "Enables trace level logging.", scope = ScopeType.INHERIT)
+	protected void setTrace(final boolean trace) {
+		this.trace = trace;
+		updateLogLevel();
+	}
+
+	/**
+	 * Updates the log level based upon the current debug setting. The current debug setting remains unchanged.
+	 * @implSpec If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 * @see #isDebug()
+	 * @see #isTrace()
+	 */
 	protected void updateLogLevel() {
-		final Level logLevel = debug ? Level.DEBUG : Level.WARN; //TODO default to INFO level when we provide a log output (e.g. to file) option
-
-		/*TODO determine additional logging configuration, including explicit log level requested, and log file requested; code from legacy CommandLineArguments
-		Log.Level logLevel = getOption(arguments, Switch.LOG_LEVEL, Log.Level.class); //get the explicit log level, if any
-		if(logLevel == null) { //if no specific log level was specified, see if a verbosity level was specified
-			if(hasFlag(arguments, Switch.VERBOSE)) {
-				logLevel = Log.Level.DEBUG;
-			} else if(hasFlag(arguments, Switch.QUIET)) {
-				logLevel = Log.Level.WARN;
-			} else {
-				logLevel = Log.Level.INFO;
-			}
+		final Level logLevel;
+		if(isTrace()) {
+			logLevel = Level.TRACE;
+		} else if(isDebug()) {
+			logLevel = Level.DEBUG;
+		} else {
+			logLevel = defaultLogLevel;
 		}
-		final String logFileOption = getOption(arguments, Switch.LOG_FILE); //get the log file, if any
-		final File logFile = logFileOption != null ? new File(logFileOption) : null;
-		Log.setDefaultConfiguration(new DefaultLogConfiguration(logFile, logLevel)); //set the default log configuration
-		*/
-
 		Clogr.getLoggingConcern().setLogLevel(logLevel);
 	}
 
 	/**
 	 * Arguments constructor.
+	 * @implSpec The {@link Level#WARN} log level is used by default if no other log level-related options are indicated.
 	 * @param args The command line arguments.
 	 */
 	public BaseCliApplication(@Nonnull final String[] args) {
+		this(args, Level.WARN);
+	}
+
+	/**
+	 * Arguments constructor.
+	 * @param args The command line arguments.
+	 * @param defaultLogLevel The default log level to use if no other log level-related options are indicated.
+	 */
+	public BaseCliApplication(@Nonnull final String[] args, final Level defaultLogLevel) {
 		super(args);
+		this.defaultLogLevel = defaultLogLevel;
 		updateLogLevel(); //update the log level based upon the debug setting
 	}
 

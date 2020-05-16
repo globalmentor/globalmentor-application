@@ -73,6 +73,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	/**
 	 * Returns whether debug mode is enabled.
 	 * @apiNote Debug mode enables debug level logging and may also enable other debug functionality.
+	 * @apiNote Thus <dfn>debug mode</dfn> refers to both a mode setting and a log level. Other settings may influence the log level while leaving debug mode on.
 	 * @return The state of debug mode.
 	 */
 	public boolean isDebug();
