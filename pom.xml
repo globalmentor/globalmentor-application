@@ -5,11 +5,11 @@
 	<parent>
 		<groupId>com.globalmentor</groupId>
 		<artifactId>globalmentor-opensource-parent</artifactId>
-		<version>8.5.5-SNAPSHOT</version>
+		<version>8.5.5</version>
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.7.5-SNAPSHOT</version>
+	<version>0.7.5</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
@@ -50,7 +50,7 @@
 		<dependency>
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
-			<version>4.3.1</version>
+			<version>4.3.2</version>
 		</dependency>
 
 		<dependency>
