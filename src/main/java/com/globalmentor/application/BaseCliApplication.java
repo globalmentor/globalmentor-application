@@ -16,16 +16,20 @@
 
 package com.globalmentor.application;
 
+import static org.fusesource.jansi.Ansi.ansi;
+
 import java.io.*;
 
 import javax.annotation.*;
 
-import org.fusesource.jansi.AnsiConsole;
+import org.fusesource.jansi.*;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
+import com.github.dtmo.jfiglet.*;
+
 import io.clogr.*;
-import io.confound.config.ConfigurationException;
+import io.confound.config.*;
 import io.confound.config.file.ResourcesConfigurationManager;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
@@ -232,6 +236,29 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	public void exit(int status) {
 		AnsiConsole.systemUninstall();
 		super.exit(status);
+	}
+
+	/**
+	 * Logs startup app information, including application banner, name, and version.
+	 * @see #getLogger()
+	 * @see Level#INFO
+	 * @throws ConfigurationException if some configuration information isn't present.
+	 */
+	protected void logAppInfo() {
+		final FigletRenderer figletRenderer;
+		final Configuration appConfiguration;
+		try {
+			appConfiguration = ResourcesConfigurationManager.loadConfigurationForClass(getClass())
+					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException);
+			figletRenderer = new FigletRenderer(FigFontResources.loadFigFontResource(FigFontResources.BIG_FLF));
+		} catch(final IOException ioException) {
+			throw new ConfigurationException(ioException);
+		}
+		final String appName = appConfiguration.getString(CONFIG_KEY_NAME);
+		final String appVersion = appConfiguration.getString(CONFIG_KEY_VERSION);
+		final Logger logger = getLogger();
+		logger.info("\n{}{}{}", ansi().bold().fg(Ansi.Color.GREEN), figletRenderer.renderText(appName), ansi().reset());
+		logger.info("{} {}\n", appName, appVersion);
 	}
 
 	/**
