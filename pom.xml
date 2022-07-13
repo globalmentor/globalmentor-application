@@ -59,7 +59,7 @@
 
 		<dependency>
 			<groupId>io.clogr</groupId>
-			<artifactId>clogr-logback</artifactId>
+			<artifactId>clogr-logback-provider</artifactId>
 		</dependency>
 
 		<dependency>
@@ -77,6 +77,12 @@
 			<groupId>org.fusesource.jansi</groupId>
 			<artifactId>jansi</artifactId>
 			<version>2.4.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.tuxdude.logback.extensions</groupId>
+			<artifactId>logback-colorizer</artifactId>
+			<version>1.0.1</version>
 		</dependency>
 
 		<dependency>
