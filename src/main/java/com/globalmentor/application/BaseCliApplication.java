@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.Conditions.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
@@ -72,9 +73,14 @@ import picocli.CommandLine.Model.CommandSpec;
  * <dd>Turns on debug mode and enables debug level logging.</dd>
  * <dt><code>--trace</code></dt>
  * <dd>Enables trace level logging.</dd>
+ * <dt><code>--quiet</code>, <code>-q</code></dt>
+ * <dd>Reduces or eliminates output of unnecessary information.</dd>
+ * <dt><code>--verbose</code>, <code>-v</code></dt>
+ * <dd>Provides additional output information.</dd>
  * </dl>
  * @implSpec This implementation adds ANSI support via Jansi.
  * @author Garret Wilson
+ * @see <a href="https://tldp.org/LDP/abs/html/standard-options.html">Advanced Bash-Scripting Guide: G.1. Standard Command-Line Options</a>
  */
 @Command(versionProvider = BaseCliApplication.MetadataProvider.class, mixinStandardHelpOptions = true)
 public abstract class BaseCliApplication extends AbstractApplication {
@@ -157,13 +163,17 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * Updates the log level based upon the current debug setting. The current debug setting remains unchanged.
-	 * @implSpec If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 * @implSpec If {@link #isQuiet()} is enabled, it takes priority and {@link Level#WARN} is used. Otherwise {@link #isTrace()} results in {@link Level#TRACE},
+	 *           and {@link #isDebug()} results in {@link Level#DEBUG}. If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 * @see #isQuiet()
 	 * @see #isDebug()
 	 * @see #isTrace()
 	 */
 	protected void updateLogLevel() {
 		final Level logLevel;
-		if(isTrace()) {
+		if(isQuiet()) {
+			logLevel = Level.WARN;
+		} else if(isTrace()) {
 			logLevel = Level.TRACE;
 		} else if(isDebug()) {
 			logLevel = Level.DEBUG;
@@ -171,6 +181,43 @@ public abstract class BaseCliApplication extends AbstractApplication {
 			logLevel = defaultLogLevel;
 		}
 		Clogr.getLoggingConcern().setLogLevel(logLevel);
+	}
+
+	private boolean quiet = false;
+
+	/** @return Whether quiet output has been requested. */
+	protected boolean isQuiet() {
+		return quiet;
+	}
+
+	/**
+	 * Enables or disables quiet output. Mutually exclusive with {@link #setVerbose(boolean)}.
+	 * @param quiet The new state of quietness.
+	 */
+	@Option(names = {"--quiet",
+			"-q"}, description = "Reduces or eliminates output of unnecessary information. Mutually exclusive with the verbose option.", scope = ScopeType.INHERIT)
+	protected void setQuiet(final boolean quiet) {
+		checkState(!isVerbose(), "Quiet and verbose options are mutually exclusive.");
+		this.quiet = quiet;
+		updateLogLevel();
+	}
+
+	private boolean verbose = false;
+
+	/** @return Whether verbose output has been requested. */
+	protected boolean isVerbose() {
+		return verbose;
+	}
+
+	/**
+	 * Enables or disables verbose output. Mutually exclusive with {@link #setQuiet(boolean)}.
+	 * @param verbose <code>true</code> if additional information should be output.
+	 */
+	@Option(names = {"--verbose",
+			"-v"}, description = "Provides additional output information. Mutually exclusive with the quiet option.", scope = ScopeType.INHERIT)
+	protected void setVerbose(final boolean verbose) {
+		checkState(!isQuiet(), "Quiet and verbose options are mutually exclusive.");
+		this.verbose = verbose;
 	}
 
 	/**
