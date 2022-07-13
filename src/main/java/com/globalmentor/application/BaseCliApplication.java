@@ -163,13 +163,17 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * Updates the log level based upon the current debug setting. The current debug setting remains unchanged.
-	 * @implSpec If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 * @implSpec If {@link #isQuiet()} is enabled, it takes priority and {@link Level#WARN} is used. Otherwise {@link #isTrace()} results in {@link Level#TRACE},
+	 *           and {@link #isDebug()} results in {@link Level#DEBUG}. If no log level-related options are indicated the {@link #defaultLogLevel} is used.
+	 * @see #isQuiet()
 	 * @see #isDebug()
 	 * @see #isTrace()
 	 */
 	protected void updateLogLevel() {
 		final Level logLevel;
-		if(isTrace()) {
+		if(isQuiet()) {
+			logLevel = Level.WARN;
+		} else if(isTrace()) {
 			logLevel = Level.TRACE;
 		} else if(isDebug()) {
 			logLevel = Level.DEBUG;
@@ -195,6 +199,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	protected void setQuiet(final boolean quiet) {
 		checkState(!isVerbose(), "Quiet and verbose options are mutually exclusive.");
 		this.quiet = quiet;
+		updateLogLevel();
 	}
 
 	private boolean verbose = false;
