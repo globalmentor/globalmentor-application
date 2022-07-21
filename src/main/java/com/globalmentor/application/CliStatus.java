@@ -31,7 +31,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.*;
 
 /**
- * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status message based upon current work in progress.
+ * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. THere are
+ * three sources of the status label, explained at {@link #findStatusLabel()}.
  * <p>
  * This status printer must be closed after it is no longer in use.
  * </p>
@@ -163,15 +164,71 @@ public class CliStatus<W> implements Closeable {
 	}
 
 	/**
-	 * Returns a string representing the current work.
+	 * Returns a status label representing the current work.
 	 * @apiNote Normally this method simply identifies the work, but a subclass could override this method and provide some more detailed message potentially
 	 *          using other state.
 	 * @implSpec The default implementation merely delegates to the work's {@link Object#toString()}.
 	 * @param work The work to display in the status.
 	 * @return A status string for the work.
 	 */
-	protected String toStatus(@Nonnull final W work) {
+	protected String toStatusLabel(@Nonnull final W work) {
 		return work.toString();
+	}
+
+	private Optional<String> statusMessage = Optional.empty();
+
+	/** @return The currently set status message, which may not be present. */
+	public synchronized Optional<String> findStatusMessage() {
+		return statusMessage;
+	}
+
+	/**
+	 * Sets the status message and scheduled the status to be reprinted.
+	 * @param statusMessage The status message do be displayed.
+	 * @see #printStatusAsync()
+	 */
+	public synchronized void setStatusMessage(@Nonnull final String statusMessage) {
+		this.statusMessage = Optional.of(statusMessage);
+		printStatusAsync();
+	}
+
+	/**
+	 * Removes any status message, allowing the work status, if any, to be shown.
+	 * @see #printStatusAsync()
+	 */
+	public synchronized void clearStatusMesage() {
+		statusMessage = Optional.empty();
+		printStatusAsync();
+	}
+
+	private Optional<Notification> notification = Optional.empty();
+
+	/**
+	 * Determines the current notification in effect. If there was a notification but it has expired, the notification is removed.
+	 * @return The currently active notification, if any.
+	 */
+	public synchronized Optional<Notification> findNotification() {
+		if(notification.filter(Notification::isExpired).isPresent()) { //remove the notification if it is expired
+			notification = Optional.empty();
+		}
+		return notification;
+	}
+
+	/**
+	 * Retrieves the current status label to display.
+	 * <p>
+	 * There are three sources of the status label, in order of priority:
+	 * </p>
+	 * <ul>
+	 * <li>A <dfn>notification</dfn> returned by {@link #findNotification()}, a temporary change in status message that only last for a certain amount of time.
+	 * <li>A manually-set status <dfn>message</dfn> returned by {@link #findStatusMessage()}. If set, the status message never goes away until cleared, unless it
+	 * is temporarily superseded by a notification.
+	 * <li>An indication of current work, if any.</li>
+	 * </ul>
+	 * @return The current status string to show, which may not be present if no message or notification is set, and no work is in progress.
+	 */
+	public synchronized Optional<String> findStatusLabel() {
+		return findNotification().map(Notification::getText).or(this::findStatusMessage).or(() -> findStatusWork().map(this::toStatusLabel));
 	}
 
 	/**
@@ -228,19 +285,18 @@ public class CliStatus<W> implements Closeable {
 		printExecutorService.execute(this::printStatus);
 	}
 
-	/** Keeps track of the last status string to prevent unnecessary re-printing and to determine padding. */
+	/** Keeps track of the entire last status string to prevent unnecessary re-printing and to determine padding. */
 	@Nullable
 	private String lastStatus = null;
 
 	/**
-	 * Prints the current status, including the elapsed time, optional count, and current work.
+	 * Prints the current status, including the elapsed time, optional count, and label.
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
 	 *          {@link #printStatusAsync()}.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #getElapsedTime()
 	 * @see #getCounter()
-	 * @see #findStatusWork()
-	 * @see #toStatus(Object)
+	 * @see #findStatusLabel()
 	 */
 	protected synchronized void printStatus() {
 		final StringBuilder statusStringBuilder = new StringBuilder();
@@ -252,8 +308,8 @@ public class CliStatus<W> implements Closeable {
 		if(count >= 0) {
 			statusStringBuilder.append(" | ").append(count);
 		}
-		//work status
-		findStatusWork().map(this::toStatus).ifPresent(workStatus -> statusStringBuilder.append(" | ").append(workStatus));
+		//status label
+		findStatusLabel().ifPresent(label -> statusStringBuilder.append(" | ").append(label));
 		final String status = statusStringBuilder.toString();
 		if(!status.equals(lastStatus)) { //if the status is different than the last time (or there was no previous status)
 			//We only have to pad to the last actual status, _not_ to the _padded_ last status, because
@@ -289,6 +345,47 @@ public class CliStatus<W> implements Closeable {
 			printExecutorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
+	}
+
+	/**
+	 * A temporary status change that is shown for a certain amount of time.
+	 * @author Garret Wilson
+	 */
+	private static class Notification {
+
+		private final String text;
+
+		/** @return The status text to display. */
+		public String getText() {
+			return text;
+		}
+
+		private final long endTimeNs;
+
+		/** @return The ending time, exclusive, of the notification in terms of {@link System#nanoTime()} . */
+		public long getEndTimNs() {
+			return endTimeNs;
+		}
+
+		/**
+		 * Determines whether the notification is currently expired based upon the current {@link System#nanoTime()}.
+		 * @return Whether the notification has expired.
+		 * @see #getEndTimNs()
+		 */
+		public boolean isExpired() {
+			return getEndTimNs() >= System.nanoTime();
+		}
+
+		/**
+		 * Constructor
+		 * @param text The status text to display.
+		 * @param duration The duration of the notification.
+		 */
+		private Notification(@Nonnull final String text, @Nonnull final Duration duration) {
+			this.text = requireNonNull(text);
+			this.endTimeNs = System.nanoTime() + duration.toNanos();
+		}
+
 	}
 
 }
