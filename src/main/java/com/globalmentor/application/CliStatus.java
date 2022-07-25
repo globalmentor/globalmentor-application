@@ -21,6 +21,7 @@ import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.*;
 import static java.util.concurrent.Executors.*;
+import static org.fusesource.jansi.Ansi.*;
 
 import java.io.*;
 import java.time.Duration;
@@ -29,6 +30,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.*;
+
+import org.slf4j.event.Level;
 
 /**
  * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. THere are
@@ -46,6 +49,12 @@ import javax.annotation.*;
  * @author Garret Wilson
  */
 public class CliStatus<W> implements Closeable {
+
+	/** The default notification duration. */
+	protected static final Duration NOTIFICATION_DEFAULT_DURATION = Duration.ofSeconds(5);
+
+	/** The default notification severity. */
+	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
 
 	private final ExecutorService printExecutorService = newSingleThreadExecutor();
 
@@ -165,14 +174,12 @@ public class CliStatus<W> implements Closeable {
 
 	/**
 	 * Returns a status label representing the current work.
-	 * @apiNote Normally this method simply identifies the work, but a subclass could override this method and provide some more detailed message potentially
-	 *          using other state.
-	 * @implSpec The default implementation merely delegates to the work's {@link Object#toString()}.
+	 * @implSpec The default implementation formats a string containing the count of work in progress and a string version of the work.
 	 * @param work The work to display in the status.
 	 * @return A status string for the work.
 	 */
 	protected String toStatusLabel(@Nonnull final W work) {
-		return work.toString();
+		return "/" + workInProgress.size() + ": " + work;
 	}
 
 	private Optional<String> statusMessage = Optional.empty();
@@ -215,6 +222,53 @@ public class CliStatus<W> implements Closeable {
 	}
 
 	/**
+	 * Adds a notification with the default severity and duration. The current notification, if any, will be discarded and replaced with the specified
+	 * notification.
+	 * @param text The status text to display.
+	 */
+	public synchronized void notify(@Nonnull final String text) {
+		notify(NOTIFICATION_DEFAULT_SEVERITY, text, NOTIFICATION_DEFAULT_DURATION);
+	}
+
+	/**
+	 * Adds a notification with the default severity. The current notification, if any, will be discarded and replaced with the specified notification.
+	 * @param text The status text to display.
+	 * @param duration The duration of the notification.
+	 */
+	public synchronized void notify(@Nonnull final String text, @Nonnull final Duration duration) {
+		notify(NOTIFICATION_DEFAULT_SEVERITY, text, duration);
+	}
+
+	/**
+	 * Adds a notification with the default duration. The current notification, if any, will be discarded and replaced with the specified notification.
+	 * @param severity The notification severity (e.g. warning or error).
+	 * @param text The status text to display.
+	 */
+	public synchronized void notify(@Nonnull final Level severity, @Nonnull final String text) {
+		notify(severity, text, NOTIFICATION_DEFAULT_DURATION);
+	}
+
+	/**
+	 * Adds a notification. The current notification, if any, will be discarded and replaced with the specified notification.
+	 * @param severity The notification severity (e.g. warning or error).
+	 * @param text The status text to display.
+	 * @param duration The duration of the notification.
+	 */
+	public synchronized void notify(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+		notification = Optional.of(new Notification(severity, text, duration));
+		printStatusAsync();
+	}
+
+	/**
+	 * Immediately removes any notification even if not yet expired, allowing the status message or work status, if any, to be shown.
+	 * @see #printStatusAsync()
+	 */
+	public synchronized void clearNotification() {
+		notification = Optional.empty();
+		printStatusAsync();
+	}
+
+	/**
 	 * Retrieves the current status label to display.
 	 * <p>
 	 * There are three sources of the status label, in order of priority:
@@ -225,10 +279,11 @@ public class CliStatus<W> implements Closeable {
 	 * is temporarily superseded by a notification.
 	 * <li>An indication of current work, if any.</li>
 	 * </ul>
+	 * @implSpec This implementation shows any notification using rich ANSI text if appropriate based upon its severity.
 	 * @return The current status string to show, which may not be present if no message or notification is set, and no work is in progress.
 	 */
 	public synchronized Optional<String> findStatusLabel() {
-		return findNotification().map(Notification::getText).or(this::findStatusMessage).or(() -> findStatusWork().map(this::toStatusLabel));
+		return findNotification().map(Notification::getAnsiText).or(this::findStatusMessage).or(() -> findStatusWork().map(this::toStatusLabel));
 	}
 
 	/**
@@ -237,7 +292,7 @@ public class CliStatus<W> implements Closeable {
 	 * @param line The line to print.
 	 * @see #printStatus()
 	 */
-	public void printLineAsync(@Nonnull final String line) {
+	public void printLineAsync(@Nonnull final CharSequence line) {
 		printExecutorService.execute(() -> printLine(line));
 	}
 
@@ -252,7 +307,7 @@ public class CliStatus<W> implements Closeable {
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #printStatus()
 	 */
-	protected synchronized void printLine(@Nonnull final String line) {
+	protected synchronized void printLine(@Nonnull final CharSequence line) {
 		final int padWidth = lastStatus != null ? lastStatus.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 		try {
 			getOut().append(format("\r%-" + padWidth + "s%s", line, System.lineSeparator()));
@@ -353,11 +408,29 @@ public class CliStatus<W> implements Closeable {
 	 */
 	private static class Notification {
 
+		private final Level severity;
+
+		/** @return The notification severity (e.g. warning or error). */
+		public Level getSeverity() {
+			return severity;
+		}
+
 		private final String text;
 
 		/** @return The status text to display. */
 		public String getText() {
 			return text;
+		}
+
+		/**
+		 * @return The status text to display in rich text using ANSI escape codes based on the severity.
+		 * @see #getText()
+		 * @see #getSeverity()
+		 * @see #findColor(Level)
+		 */
+		public String getAnsiText() {
+			final String text = getText();
+			return findColor(getSeverity()).map(color -> ansi().bold().fg(color).a(text).reset().toString()).orElse(text);
 		}
 
 		private final long endTimeNs;
@@ -378,12 +451,33 @@ public class CliStatus<W> implements Closeable {
 
 		/**
 		 * Constructor
+		 * @param severity The notification severity (e.g. warning or error).
 		 * @param text The status text to display.
 		 * @param duration The duration of the notification.
 		 */
-		private Notification(@Nonnull final String text, @Nonnull final Duration duration) {
+		private Notification(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+			this.severity = requireNonNull(severity);
 			this.text = requireNonNull(text);
 			this.endTimeNs = System.nanoTime() + duration.toNanos();
+		}
+
+		/**
+		 * Finds the appropriate ANSI color to use for the given severity.
+		 * @param severity The notification severity.
+		 * @return The ANSI color for the severity, if any.
+		 */
+		public static Optional<Color> findColor(@Nonnull final Level severity) {
+			switch(severity) {
+				case ERROR:
+					return Optional.of(Color.RED);
+				case WARN:
+					return Optional.of(Color.YELLOW);
+				case INFO:
+					return Optional.of(Color.CYAN);
+				default:
+					return Optional.empty();
+			}
+
 		}
 
 	}
