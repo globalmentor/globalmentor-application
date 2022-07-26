@@ -149,6 +149,15 @@ public class CliStatus<W> implements Closeable {
 	}
 
 	/**
+	 * @return The current count of work in progress.
+	 * @see #addWork(Object)
+	 * @see #removeWork(Object)
+	 */
+	public int getWorkCount() {
+		return workInProgress.size();
+	}
+
+	/**
 	 * Adds a record of ongoing work. The status will later be updated asynchronously if appropriate. If the work was already recorded as ongoing, no further
 	 * action is taken.
 	 * @param work The ongoing work to add.
@@ -167,7 +176,7 @@ public class CliStatus<W> implements Closeable {
 	 * @see #printStatusAsync()
 	 */
 	public void removeWork(@Nonnull final W work) {
-		if(workInProgress.remove(work)) {
+		if(workInProgress.remove(requireNonNull(work))) {
 			printStatusAsync();
 		}
 	}
@@ -179,7 +188,7 @@ public class CliStatus<W> implements Closeable {
 	 * @return A status string for the work.
 	 */
 	protected String toStatusLabel(@Nonnull final W work) {
-		return "/" + workInProgress.size() + ": " + work;
+		return "/" + getWorkCount() + ": " + work;
 	}
 
 	private Optional<String> statusMessage = Optional.empty();
@@ -289,30 +298,63 @@ public class CliStatus<W> implements Closeable {
 	/**
 	 * Asynchronously prints (i.e. schedules for printing later) a new line to appear above the status, scrolling previous information up.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
+	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
 	 * @param line The line to print.
 	 * @see #printStatus()
 	 */
 	public void printLineAsync(@Nonnull final CharSequence line) {
-		printExecutorService.execute(() -> printLine(line));
+		printLinesAsync(singleton(line));
 	}
 
 	/**
-	 * Prints a new line to appear above the status, scrolling previous information up.
+	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, scrolling previous information up. The lines are guaranteed
+	 * to be grouped together.
+	 * @apiNote This is useful for providing some useful information in addition to the status line.
+	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
+	 * @param lines The lines to print.
+	 * @see #printStatus()
+	 */
+	public void printLinesAsync(@Nonnull final CharSequence... lines) {
+		printLinesAsync(List.of(lines));
+	}
+
+	/**
+	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, scrolling previous information up. The lines are guaranteed
+	 * to be grouped together.
+	 * @apiNote This is useful for providing some useful information in addition to the status line.
+	 * @param lines The lines to print.
+	 * @see #printStatus()
+	 */
+	public void printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
+		printExecutorService.execute(() -> printLines(lines));
+	}
+
+	/**
+	 * Prints zero, one, or several new lines to appear above the status, scrolling previous information up. The lines are guaranteed to be grouped together.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the printing later using
 	 *          {@link #printLineAsync(String)}.
-	 * @implSpec The implementation prints a line over the current status, skips to the next line, and prints the current status. This has the effect of scrolling
-	 *           information up and printing a line above the status.
-	 * @param line The line to print.
+	 * @implSpec The implementation prints each line over the current status, skips to the next line, and prints the current status. This has the effect of
+	 *           scrolling information up and printing a line above the status.
+	 * @param lines The lines to print.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #printStatus()
 	 */
-	protected synchronized void printLine(@Nonnull final CharSequence line) {
-		final int padWidth = lastStatus != null ? lastStatus.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
-		try {
-			getOut().append(format("\r%-" + padWidth + "s%s", line, System.lineSeparator()));
-		} catch(final IOException ioException) {
-			throw new UncheckedIOException(ioException);
+	protected synchronized void printLines(@Nonnull final Iterable<? extends CharSequence> lines) {
+		final Iterator<? extends CharSequence> lineIterator = lines.iterator();
+		if(!lineIterator.hasNext()) {
+			return; //nothing to do
+		}
+		int padWidth = lastStatus != null ? lastStatus.length() : 0; //if 0, padding will be skipped
+		while(lineIterator.hasNext()) {
+			final CharSequence line = lineIterator.next();
+			try {
+				final String lineTemplate = padWidth > 0 ? "\r%-" + padWidth + "s%s" : "\r%s%s";
+				getOut().append(format(lineTemplate, line, System.lineSeparator()));
+				padWidth = 0; //only pad the first line, as subsequent lines don't have to overwrite anything
+			} catch(final IOException ioException) {
+				throw new UncheckedIOException(ioException);
+			}
 		}
 		lastStatus = null; //we're skipping to another line for further status
 		printStatus();
