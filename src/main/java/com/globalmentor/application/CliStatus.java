@@ -51,7 +51,7 @@ import org.slf4j.event.Level;
 public class CliStatus<W> implements Closeable {
 
 	/** The default notification duration. */
-	protected static final Duration NOTIFICATION_DEFAULT_DURATION = Duration.ofSeconds(5);
+	protected static final Duration NOTIFICATION_DEFAULT_DURATION = Duration.ofSeconds(8);
 
 	/** The default notification severity. */
 	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
@@ -488,7 +488,7 @@ public class CliStatus<W> implements Closeable {
 		 * @see #getEndTimNs()
 		 */
 		public boolean isExpired() {
-			return getEndTimNs() >= System.nanoTime();
+			return System.nanoTime() >= getEndTimNs();
 		}
 
 		/**
