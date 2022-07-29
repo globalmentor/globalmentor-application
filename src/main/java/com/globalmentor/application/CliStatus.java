@@ -89,6 +89,26 @@ public class CliStatus<W> implements Closeable {
 		printStatusAsync();
 	}
 
+	private final AtomicLong total = new AtomicLong(-1);
+
+	/**
+	 * Returns the total used in the status.
+	 * @return The total work count expected. If the total has a negative value, is is not included in the status.
+	 * @see #getCounter()
+	 */
+	public long getTotal() {
+		return total.get();
+	}
+
+	/**
+	 * Sets the total expected for the counter.
+	 * @param total The new total, or a negative value if no total should be displayed.
+	 * @see #getCounter()
+	 */
+	public void setTotal(final long total) {
+		this.total.set(total);
+	}
+
 	private final long startTimeNs;
 
 	/** @return The duration of time elapsed. */
@@ -419,6 +439,10 @@ public class CliStatus<W> implements Closeable {
 		final long count = getCounter().get();
 		if(count >= 0) {
 			statusStringBuilder.append(" | ").append(count);
+			final long total = getTotal();
+			if(total >= 0) {
+				statusStringBuilder.append('/').append(total);
+			}
 		}
 		//status label
 		findStatusLabel().ifPresent(label -> statusStringBuilder.append(" | ").append(label));
