@@ -17,6 +17,7 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.collections.iterators.Iterators.*;
+import static com.globalmentor.java.Conditions.*;
 import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.*;
@@ -55,6 +56,9 @@ public class CliStatus<W> implements Closeable {
 
 	/** The default notification severity. */
 	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
+
+	/** The longest work label to show without constraining its length. */
+	protected static final int WORK_MAX_LABEL_LENGTH = 160;
 
 	private final ExecutorService printExecutorService = newSingleThreadExecutor();
 
@@ -183,12 +187,23 @@ public class CliStatus<W> implements Closeable {
 
 	/**
 	 * Returns a status label representing the current work.
-	 * @implSpec The default implementation formats a string containing the count of work in progress and a string version of the work.
+	 * @implSpec The default implementation formats a string containing the count of work in progress and a string label of the work derived by calling
+	 *           {@link #toLabel(Object)}.
 	 * @param work The work to display in the status.
 	 * @return A status string for the work.
 	 */
 	protected String toStatusLabel(@Nonnull final W work) {
-		return "/" + getWorkCount() + ": " + work;
+		return "/" + getWorkCount() + ": " + toLabel(work);
+	}
+
+	/**
+	 * Returns a label to represent the current work with no additional information.
+	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #WORK_MAX_LABEL_LENGTH}.
+	 * @param work The work to display in the status.
+	 * @return A label for the work itself.
+	 */
+	protected CharSequence toLabel(@Nonnull final W work) {
+		return constrainLabelLength(work.toString(), WORK_MAX_LABEL_LENGTH);
 	}
 
 	private Optional<String> statusMessage = Optional.empty();
@@ -442,6 +457,30 @@ public class CliStatus<W> implements Closeable {
 			printExecutorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
+	}
+
+	/**
+	 * Constrains a string length by cutting it in the middle if it is too long and inserting an ellipsis in the gap as a single character replacement.
+	 * @param charSequence The label to constrain.
+	 * @param maxLength The maximum length to constrain.
+	 * @return The label constrained to a certain length.
+	 */
+	protected static CharSequence constrainLabelLength(@Nonnull final CharSequence charSequence, @Nonnegative final int maxLength) { //TODO transfer to a library utility method; add tests; create improved version that understands path segments
+		checkArgumentNotNegative(maxLength);
+		if(maxLength == 0) {
+			return "";
+		}
+		if(maxLength == 1) {
+			return "…";
+		}
+		final int length = charSequence.length();
+		if(length <= maxLength) {
+			return charSequence;
+		}
+		final int cutLength = length - maxLength;
+		assert cutLength >= 0;
+		final int cutStart = maxLength / 2;
+		return new StringBuilder().append(charSequence, 0, cutStart).append('…').append(charSequence, cutStart + cutLength - 1, maxLength); //compensate for the character we're adding
 	}
 
 	/**
