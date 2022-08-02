@@ -21,6 +21,7 @@ import static com.globalmentor.java.Conditions.*;
 import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.*;
+import static java.util.concurrent.CompletableFuture.*;
 import static java.util.concurrent.Executors.*;
 import static org.fusesource.jansi.Ansi.*;
 
@@ -35,7 +36,7 @@ import javax.annotation.*;
 import org.slf4j.event.Level;
 
 /**
- * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. THere are
+ * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. There are
  * three sources of the status label, explained at {@link #findStatusLabel()}.
  * <p>
  * This status printer must be closed after it is no longer in use.
@@ -49,7 +50,7 @@ import org.slf4j.event.Level;
  *           can be improved.
  * @author Garret Wilson
  */
-public class CliStatus<W> implements Closeable {
+public class CliStatus<W> implements Executor, Closeable {
 
 	/** The default notification duration. */
 	protected static final Duration NOTIFICATION_DEFAULT_DURATION = Duration.ofSeconds(8);
@@ -60,7 +61,12 @@ public class CliStatus<W> implements Closeable {
 	/** The longest work label to show without constraining its length. */
 	protected static final int WORK_MAX_LABEL_LENGTH = 160;
 
-	private final ExecutorService printExecutorService = newSingleThreadExecutor();
+	private final ExecutorService executorService = newSingleThreadExecutor();
+
+	/** @return The executor service being used for queue operations. */
+	protected ExecutorService getExecutorService() {
+		return executorService;
+	}
 
 	private final Appendable out;
 
@@ -82,11 +88,11 @@ public class CliStatus<W> implements Closeable {
 
 	/**
 	 * Increments the counter and asynchronously updates the status.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public void incrementCount() {
 		counter.incrementAndGet();
-		printStatusAsync();
+		printStatusLineAsync();
 	}
 
 	private final AtomicLong total = new AtomicLong(-1);
@@ -148,6 +154,24 @@ public class CliStatus<W> implements Closeable {
 	}
 
 	/**
+	 * {@inheritDoc} This version executes serially some command that might interfere with status output, ensuring that the status is erased before the operation
+	 * and then reprinted after the operation.
+	 * <p>
+	 * For example a log line might be written to the same output as the status, or it might be written to a different standard output that is being sent to the
+	 * terminal along with the status. In either case writing the information concurrently would result in intermingled text. Executing the command via this
+	 * method would ensure that the log message is written separately from the status update.
+	 * </p>
+	 */
+	@Override
+	public void execute(final Runnable command) {
+		runAsync(() -> {
+			clearStatusLine();
+			command.run();
+			printStatusLine();
+		}, getExecutorService());
+	}
+
+	/**
 	 * The identifiers of work currently in progress. This is not expected to grow very large, as the number is limited to large extent by the number of threads
 	 * used in the thread pool.
 	 */
@@ -185,11 +209,11 @@ public class CliStatus<W> implements Closeable {
 	 * Adds a record of ongoing work. The status will later be updated asynchronously if appropriate. If the work was already recorded as ongoing, no further
 	 * action is taken.
 	 * @param work The ongoing work to add.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public void addWork(@Nonnull final W work) {
 		if(workInProgress.add(requireNonNull(work))) {
-			printStatusAsync();
+			printStatusLineAsync();
 		}
 	}
 
@@ -197,11 +221,11 @@ public class CliStatus<W> implements Closeable {
 	 * Removes any record of ongoing work. The status will later be updated asynchronously if appropriate. If the work was not recorded as ongoing, no further
 	 * action is taken.
 	 * @param work The ongoing work to remove.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public void removeWork(@Nonnull final W work) {
 		if(workInProgress.remove(requireNonNull(work))) {
-			printStatusAsync();
+			printStatusLineAsync();
 		}
 	}
 
@@ -236,20 +260,20 @@ public class CliStatus<W> implements Closeable {
 	/**
 	 * Sets the status message and scheduled the status to be reprinted.
 	 * @param statusMessage The status message do be displayed.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public synchronized void setStatusMessage(@Nonnull final String statusMessage) {
 		this.statusMessage = Optional.of(statusMessage);
-		printStatusAsync();
+		printStatusLineAsync();
 	}
 
 	/**
 	 * Removes any status message, allowing the work status, if any, to be shown.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public synchronized void clearStatusMesage() {
 		statusMessage = Optional.empty();
-		printStatusAsync();
+		printStatusLineAsync();
 	}
 
 	private Optional<Notification> notification = Optional.empty();
@@ -300,16 +324,16 @@ public class CliStatus<W> implements Closeable {
 	 */
 	public synchronized void notify(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
 		notification = Optional.of(new Notification(severity, text, duration));
-		printStatusAsync();
+		printStatusLineAsync();
 	}
 
 	/**
 	 * Immediately removes any notification even if not yet expired, allowing the status message or work status, if any, to be shown.
-	 * @see #printStatusAsync()
+	 * @see #printStatusLineAsync()
 	 */
 	public synchronized void clearNotification() {
 		notification = Optional.empty();
-		printStatusAsync();
+		printStatusLineAsync();
 	}
 
 	/**
@@ -331,41 +355,46 @@ public class CliStatus<W> implements Closeable {
 	}
 
 	/**
-	 * Asynchronously prints (i.e. schedules for printing later) a new line to appear above the status, scrolling previous information up.
+	 * Asynchronously prints (i.e. schedules for printing later) a new line to appear above the status, to the same output as the status, scrolling previous
+	 * information up.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
 	 * @param line The line to print.
-	 * @see #printStatus()
+	 * @return A future to track completion of the operation.
+	 * @see #printStatusLine()
 	 */
-	public void printLineAsync(@Nonnull final CharSequence line) {
-		printLinesAsync(singleton(line));
+	public CompletableFuture<Void> printLineAsync(@Nonnull final CharSequence line) {
+		return printLinesAsync(singleton(line));
 	}
 
 	/**
-	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, scrolling previous information up. The lines are guaranteed
-	 * to be grouped together.
+	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, to the same output as the status, scrolling previous
+	 * information up. The lines are guaranteed to be grouped together.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
 	 * @param lines The lines to print.
-	 * @see #printStatus()
+	 * @return A future to track completion of the operation.
+	 * @see #printStatusLine()
 	 */
-	public void printLinesAsync(@Nonnull final CharSequence... lines) {
-		printLinesAsync(List.of(lines));
+	public CompletableFuture<Void> printLinesAsync(@Nonnull final CharSequence... lines) {
+		return printLinesAsync(List.of(lines));
 	}
 
 	/**
-	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, scrolling previous information up. The lines are guaranteed
-	 * to be grouped together.
+	 * Asynchronously prints (i.e. schedules for printing later) new lines to appear above the status, to the same output as the status, scrolling previous
+	 * information up. The lines are guaranteed to be grouped together.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @param lines The lines to print.
-	 * @see #printStatus()
+	 * @return A future to track completion of the operation.
+	 * @see #printStatusLine()
 	 */
-	public void printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
-		printExecutorService.execute(() -> printLines(lines));
+	public CompletableFuture<Void> printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
+		return runAsync(() -> printLines(lines), getExecutorService());
 	}
 
 	/**
-	 * Prints zero, one, or several new lines to appear above the status, scrolling previous information up. The lines are guaranteed to be grouped together.
+	 * Prints zero, one, or several new lines to appear above the status, to the same output as the status, scrolling previous information up. The lines are
+	 * guaranteed to be grouped together.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the printing later using
 	 *          {@link #printLineAsync(String)}.
@@ -373,26 +402,24 @@ public class CliStatus<W> implements Closeable {
 	 *           scrolling information up and printing a line above the status.
 	 * @param lines The lines to print.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
-	 * @see #printStatus()
+	 * @see #printStatusLine()
 	 */
 	protected synchronized void printLines(@Nonnull final Iterable<? extends CharSequence> lines) {
 		final Iterator<? extends CharSequence> lineIterator = lines.iterator();
 		if(!lineIterator.hasNext()) {
 			return; //nothing to do
 		}
-		int padWidth = lastStatus != null ? lastStatus.length() : 0; //if 0, padding will be skipped
 		while(lineIterator.hasNext()) {
 			final CharSequence line = lineIterator.next();
+			final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 			try {
-				final String lineTemplate = padWidth > 0 ? "\r%-" + padWidth + "s%s" : "\r%s%s";
-				getOut().append(format(lineTemplate, line, System.lineSeparator()));
-				padWidth = 0; //only pad the first line, as subsequent lines don't have to overwrite anything
+				getOut().append(format("\r%-" + padWidth + "s%s", line, System.lineSeparator()));
+				lastStatusLine = null; //we're skipping to another line for further status
 			} catch(final IOException ioException) {
 				throw new UncheckedIOException(ioException);
 			}
 		}
-		lastStatus = null; //we're skipping to another line for further status
-		printStatus();
+		printStatusLine();
 	}
 
 	/**
@@ -400,64 +427,65 @@ public class CliStatus<W> implements Closeable {
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 */
 	protected synchronized void clearStatusLine() {
-		final int padWidth = lastStatus != null ? lastStatus.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
+		final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 		try {
 			getOut().append(format("\r%-" + padWidth + "s\r", ""));
 		} catch(final IOException ioException) {
 			throw new UncheckedIOException(ioException);
 		}
-		lastStatus = null;
+		lastStatusLine = null;
 	}
 
 	/**
 	 * Asynchronously prints (i.e. schedules for printing later) the current status, including the elapsed time, count, and current status file.
-	 * @see #printStatus()
+	 * @return A future to track completion of the operation.
+	 * @see #printStatusLine()
 	 */
-	public void printStatusAsync() {
-		printExecutorService.execute(this::printStatus);
+	public CompletableFuture<Void> printStatusLineAsync() {
+		return runAsync(this::printStatusLine, getExecutorService());
 	}
 
 	/** Keeps track of the entire last status string to prevent unnecessary re-printing and to determine padding. */
 	@Nullable
-	private String lastStatus = null;
+	private String lastStatusLine = null;
 
 	/**
 	 * Prints the current status, including the elapsed time, optional count, and label.
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
-	 *          {@link #printStatusAsync()}.
+	 *          {@link #printStatusLineAsync()}.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #getElapsedTime()
 	 * @see #getCounter()
 	 * @see #findStatusLabel()
 	 */
-	protected synchronized void printStatus() {
-		final StringBuilder statusStringBuilder = new StringBuilder();
+	protected synchronized void printStatusLine() {
+		final StringBuilder statusLineStringBuilder = new StringBuilder();
 		//elapsed time
 		final Duration elapsedTime = getElapsedTime();
-		statusStringBuilder.append(format("%d:%02d:%02d", elapsedTime.toHours(), elapsedTime.toMinutesPart(), elapsedTime.toSecondsPart()));
+		statusLineStringBuilder.append(format("%d:%02d:%02d", elapsedTime.toHours(), elapsedTime.toMinutesPart(), elapsedTime.toSecondsPart()));
 		//count
 		final long count = getCounter().get();
 		if(count >= 0) {
-			statusStringBuilder.append(" | ").append(count);
+			statusLineStringBuilder.append(" | ").append(count);
 			final long total = getTotal();
 			if(total >= 0) {
-				statusStringBuilder.append('/').append(total);
+				statusLineStringBuilder.append('/').append(total);
 			}
 		}
 		//status label
-		findStatusLabel().ifPresent(label -> statusStringBuilder.append(" | ").append(label));
-		final String status = statusStringBuilder.toString();
-		if(!status.equals(lastStatus)) { //if the status is different than the last time (or there was no previous status)
+		findStatusLabel().ifPresent(label -> statusLineStringBuilder.append(" | ").append(label));
+		final String statusLine = statusLineStringBuilder.toString();
+		if(!statusLine.equals(lastStatusLine)) { //if the status is different than the last time (or there was no previous status)
 			//We only have to pad to the last actual status, _not_ to the _padded_ last status, because
 			//if the last status was printed padded, it would have erased the previous status already.
 			//In other words, padding only needs to be added once to overwrite each previous status.
-			final int padWidth = lastStatus != null ? lastStatus.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
+			final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 			try {
-				getOut().append(format("\r%-" + padWidth + "s", status));
+				getOut().append(format("\r%-" + padWidth + "s", statusLine));
 			} catch(final IOException ioException) {
 				throw new UncheckedIOException(ioException);
 			}
-			lastStatus = status; //update the last status for checking the next time
+			lastStatusLine = statusLine; //update the last status for checking the next time
 		}
 	}
 
@@ -468,17 +496,17 @@ public class CliStatus<W> implements Closeable {
 	 */
 	@Override
 	public void close() throws IOException {
-		printExecutorService.execute(this::clearStatusLine);
-		printExecutorService.shutdown();
+		executorService.execute(this::clearStatusLine);
+		executorService.shutdown();
 		try {
-			if(!printExecutorService.awaitTermination(5, TimeUnit.SECONDS)) {
-				printExecutorService.shutdownNow();
-				if(!printExecutorService.awaitTermination(3, TimeUnit.SECONDS)) {
+			if(!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+				executorService.shutdownNow();
+				if(!executorService.awaitTermination(3, TimeUnit.SECONDS)) {
 					throw new IOException("Status printing service not shut down properly.");
 				}
 			}
 		} catch(final InterruptedException interruptedException) {
-			printExecutorService.shutdownNow();
+			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
 	}
