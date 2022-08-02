@@ -24,6 +24,7 @@ import static java.util.Objects.*;
 import static java.util.concurrent.CompletableFuture.*;
 import static java.util.concurrent.Executors.*;
 import static org.fusesource.jansi.Ansi.*;
+import static org.slf4j.helpers.MessageFormatter.*;
 
 import java.io.*;
 import java.time.Duration;
@@ -33,11 +34,26 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.*;
 
+import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 /**
  * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. There are
  * three sources of the status label, explained at {@link #findStatusLabel()}.
+ * <p>
+ * This status also function as an executor, allowing operations to be executed serially via {@link #execute(Runnable)}, which delegates to the internal
+ * executor service.
+ * </p>
+ * <p>
+ * If some operation might interfere with the status line (e.g. printing some information to the same output, or to another output that eventually is shown in
+ * the same output, such as a status at {@link System#out} and an error on {@link System#err} but both displayed in the same terminal), the operation may be
+ * serialized with the status using {@link #supplyWithoutStatusLineAsync(Runnable)} to prevent its output from corrupting the status line.
+ * </p>
+ * <p>
+ * The status also enhances logging by providing methods such as {@link #warnAsync(Logger, String, Object...)} which not only ensure any output is serialized
+ * and does not corrupt the status line; but also provides a status notification with the same message as is being logged if the particular log level is enabled
+ * for the logger.
+ * </p>
  * <p>
  * This status printer must be closed after it is no longer in use.
  * </p>
@@ -154,20 +170,160 @@ public class CliStatus<W> implements Executor, Closeable {
 	}
 
 	/**
-	 * {@inheritDoc} This version executes serially some command that might interfere with status output, ensuring that the status is erased before the operation
-	 * and then reprinted after the operation.
+	 * {@inheritDoc}
+	 * @implSpec This implementation delegates to the internal executor service.
+	 */
+	@Override
+	public void execute(final Runnable command) {
+		getExecutorService().execute(command);
+	}
+
+	/**
+	 * Serially executes some command that might interfere with status output, ensuring that the status is erased before the operation and then reprinted after
+	 * the operation.
 	 * <p>
 	 * For example a log line might be written to the same output as the status, or it might be written to a different standard output that is being sent to the
 	 * terminal along with the status. In either case writing the information concurrently would result in intermingled text. Executing the command via this
 	 * method would ensure that the log message is written separately from the status update.
 	 * </p>
+	 * @param command The runnable task to execute while the status is suspended.
+	 * @return The future updated status line.
 	 */
-	@Override
-	public void execute(final Runnable command) {
-		runAsync(() -> {
+	public CompletableFuture<String> supplyWithoutStatusLineAsync(final Runnable command) {
+		return supplyAsync(() -> {
 			clearStatusLine();
 			command.run();
-			printStatusLine();
+			return printStatusLine();
+		}, getExecutorService());
+	}
+
+	/**
+	 * Logs a message at {@link Level#TRACE} using the specified logger, ensuring that the status line is first cleared to prevent any output interference in case
+	 * logging is ultimately going to the same destination as the status, and then sets the notification to the same formatted string using the same log level if
+	 * the log level is enabled for the logger.
+	 * @apiNote This is a convenience method that uses the default notification duration. For more control over logging and notification duration, schedule manual
+	 *          logging and notification updates using {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @param logger The logger to use for logging the formatted message.
+	 * @param format The string to be formatted.
+	 * @param arguments The arguments to the format string.
+	 * @return The future updated status line.
+	 * @see Logger#trace(String, Object...)
+	 * @see Logger#isTraceEnabled()
+	 * @see #setNotificationAsync(Level, String)
+	 */
+	public CompletableFuture<String> traceAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			logger.trace(format, arguments);
+			if(logger.isTraceEnabled()) {
+				return setNotification(Level.TRACE, arrayFormat(format, arguments).getMessage(), NOTIFICATION_DEFAULT_DURATION);
+			} else {
+				return printStatusLine();
+			}
+		}, getExecutorService());
+	}
+
+	/**
+	 * Logs a message at {@link Level#DEBUG} using the specified logger, ensuring that the status line is first cleared to prevent any output interference in case
+	 * logging is ultimately going to the same destination as the status, and then sets the notification to the same formatted string using the same log level if
+	 * the log level is enabled for the logger.
+	 * @apiNote This is a convenience method that uses the default notification duration. For more control over logging and notification duration, schedule manual
+	 *          logging and notification updates using {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @param logger The logger to use for logging the formatted message.
+	 * @param format The string to be formatted.
+	 * @param arguments The arguments to the format string.
+	 * @return The future updated status line.
+	 * @see Logger#debug(String, Object...)
+	 * @see Logger#isDebugEnabled()
+	 * @see #setNotificationAsync(Level, String)
+	 */
+	public CompletableFuture<String> debugAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			logger.debug(format, arguments);
+			if(logger.isDebugEnabled()) {
+				return setNotification(Level.DEBUG, arrayFormat(format, arguments).getMessage(), NOTIFICATION_DEFAULT_DURATION);
+			} else {
+				return printStatusLine();
+			}
+		}, getExecutorService());
+	}
+
+	/**
+	 * Logs a message at {@link Level#INFO} using the specified logger, ensuring that the status line is first cleared to prevent any output interference in case
+	 * logging is ultimately going to the same destination as the status, and then sets the notification to the same formatted string using the same log level if
+	 * the log level is enabled for the logger.
+	 * @apiNote This is a convenience method that uses the default notification duration. For more control over logging and notification duration, schedule manual
+	 *          logging and notification updates using {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @param logger The logger to use for logging the formatted message.
+	 * @param format The string to be formatted.
+	 * @param arguments The arguments to the format string.
+	 * @return The future updated status line.
+	 * @see Logger#info(String, Object...)
+	 * @see Logger#isInfoEnabled()
+	 * @see #setNotificationAsync(Level, String)
+	 */
+	public CompletableFuture<String> infoAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			logger.info(format, arguments);
+			if(logger.isInfoEnabled()) {
+				return setNotification(Level.INFO, arrayFormat(format, arguments).getMessage(), NOTIFICATION_DEFAULT_DURATION);
+			} else {
+				return printStatusLine();
+			}
+		}, getExecutorService());
+	}
+
+	/**
+	 * Logs a message at {@link Level#WARN} using the specified logger, ensuring that the status line is first cleared to prevent any output interference in case
+	 * logging is ultimately going to the same destination as the status, and then sets the notification to the same formatted string using the same log level if
+	 * the log level is enabled for the logger.
+	 * @apiNote This is a convenience method that uses the default notification duration. For more control over logging and notification duration, schedule manual
+	 *          logging and notification updates using {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @param logger The logger to use for logging the formatted message.
+	 * @param format The string to be formatted.
+	 * @param arguments The arguments to the format string.
+	 * @return The future updated status line.
+	 * @see Logger#warn(String, Object...)
+	 * @see Logger#isWarnEnabled()
+	 * @see #setNotificationAsync(Level, String)
+	 */
+	public CompletableFuture<String> warnAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			logger.warn(format, arguments);
+			if(logger.isWarnEnabled()) {
+				return setNotification(Level.WARN, arrayFormat(format, arguments).getMessage(), NOTIFICATION_DEFAULT_DURATION);
+			} else {
+				return printStatusLine();
+			}
+		}, getExecutorService());
+	}
+
+	/**
+	 * Logs a message at {@link Level#ERROR} using the specified logger, ensuring that the status line is first cleared to prevent any output interference in case
+	 * logging is ultimately going to the same destination as the status, and then sets the notification to the same formatted string using the same log level if
+	 * the log level is enabled for the logger.
+	 * @apiNote This is a convenience method that uses the default notification duration. For more control over logging and notification duration, schedule manual
+	 *          logging and notification updates using {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @param logger The logger to use for logging the formatted message.
+	 * @param format The string to be formatted.
+	 * @param arguments The arguments to the format string.
+	 * @return The future updated status line.
+	 * @see Logger#error(String, Object...)
+	 * @see Logger#isErrorEnabled()
+	 * @see #setNotificationAsync(Level, String)
+	 */
+	public CompletableFuture<String> errorAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			logger.error(format, arguments);
+			if(logger.isErrorEnabled()) {
+				return setNotification(Level.ERROR, arrayFormat(format, arguments).getMessage(), NOTIFICATION_DEFAULT_DURATION);
+			} else {
+				return printStatusLine();
+			}
 		}, getExecutorService());
 	}
 
@@ -258,22 +414,39 @@ public class CliStatus<W> implements Executor, Closeable {
 	}
 
 	/**
+	 * Asynchronously sets the status message and scheduled the status to be reprinted.
+	 * @param statusMessage The status message do be displayed.
+	 * @return The future updated status line.
+	 */
+	public CompletableFuture<String> setStatusMessageAsync(@Nonnull final String statusMessage) {
+		return supplyAsync(() -> setStatusMessage(statusMessage), getExecutorService());
+	}
+
+	/**
 	 * Sets the status message and scheduled the status to be reprinted.
 	 * @param statusMessage The status message do be displayed.
-	 * @see #printStatusLineAsync()
+	 * @return The updated status line.
 	 */
-	public synchronized void setStatusMessage(@Nonnull final String statusMessage) {
+	protected synchronized String setStatusMessage(@Nonnull final String statusMessage) {
 		this.statusMessage = Optional.of(statusMessage);
-		printStatusLineAsync();
+		return printStatusLine();
+	}
+
+	/**
+	 * Asynchronously removes any status message, allowing the work status, if any, to be shown.
+	 * @return The future updated status line.
+	 */
+	public CompletableFuture<String> clearStatusMesageAsync() {
+		return supplyAsync(this::clearStatusMesage, getExecutorService());
 	}
 
 	/**
 	 * Removes any status message, allowing the work status, if any, to be shown.
-	 * @see #printStatusLineAsync()
+	 * @return The updated status line.
 	 */
-	public synchronized void clearStatusMesage() {
+	protected synchronized String clearStatusMesage() {
 		statusMessage = Optional.empty();
-		printStatusLineAsync();
+		return printStatusLine();
 	}
 
 	private Optional<Notification> notification = Optional.empty();
@@ -293,27 +466,41 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * Adds a notification with the default severity and duration. The current notification, if any, will be discarded and replaced with the specified
 	 * notification.
 	 * @param text The status text to display.
+	 * @return The future updated status line.
 	 */
-	public synchronized void notify(@Nonnull final String text) {
-		notify(NOTIFICATION_DEFAULT_SEVERITY, text, NOTIFICATION_DEFAULT_DURATION);
+	public CompletableFuture<String> setNotificationAsync(@Nonnull final String text) {
+		return setNotificationAsync(NOTIFICATION_DEFAULT_SEVERITY, text, NOTIFICATION_DEFAULT_DURATION);
 	}
 
 	/**
 	 * Adds a notification with the default severity. The current notification, if any, will be discarded and replaced with the specified notification.
 	 * @param text The status text to display.
 	 * @param duration The duration of the notification.
+	 * @return The future updated status line.
 	 */
-	public synchronized void notify(@Nonnull final String text, @Nonnull final Duration duration) {
-		notify(NOTIFICATION_DEFAULT_SEVERITY, text, duration);
+	public CompletableFuture<String> setNotificationAsync(@Nonnull final String text, @Nonnull final Duration duration) {
+		return setNotificationAsync(NOTIFICATION_DEFAULT_SEVERITY, text, duration);
 	}
 
 	/**
 	 * Adds a notification with the default duration. The current notification, if any, will be discarded and replaced with the specified notification.
 	 * @param severity The notification severity (e.g. warning or error).
 	 * @param text The status text to display.
+	 * @return The future updated status line.
 	 */
-	public synchronized void notify(@Nonnull final Level severity, @Nonnull final String text) {
-		notify(severity, text, NOTIFICATION_DEFAULT_DURATION);
+	public CompletableFuture<String> setNotificationAsync(@Nonnull final Level severity, @Nonnull final String text) {
+		return setNotificationAsync(severity, text, NOTIFICATION_DEFAULT_DURATION);
+	}
+
+	/**
+	 * Adds a notification asynchronously. The current notification, if any, will be discarded and replaced with the specified notification.
+	 * @param severity The notification severity (e.g. warning or error).
+	 * @param text The status text to display.
+	 * @param duration The duration of the notification.
+	 * @return The future updated status line.
+	 */
+	public CompletableFuture<String> setNotificationAsync(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+		return supplyAsync(() -> setNotification(severity, text, duration), getExecutorService());
 	}
 
 	/**
@@ -321,19 +508,28 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param severity The notification severity (e.g. warning or error).
 	 * @param text The status text to display.
 	 * @param duration The duration of the notification.
+	 * @return The updated status line.
 	 */
-	public synchronized void notify(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+	protected synchronized String setNotification(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
 		notification = Optional.of(new Notification(severity, text, duration));
-		printStatusLineAsync();
+		return printStatusLine();
 	}
 
 	/**
-	 * Immediately removes any notification even if not yet expired, allowing the status message or work status, if any, to be shown.
-	 * @see #printStatusLineAsync()
+	 * Asynchronously removes any notification even if not yet expired, allowing the status message or work status, if any, to be shown.
+	 * @return The future updated status line.
 	 */
-	public synchronized void clearNotification() {
+	public CompletableFuture<String> clearNotificationAsync() {
+		return supplyAsync(this::clearNotification, getExecutorService());
+	}
+
+	/**
+	 * Removes any notification even if not yet expired, allowing the status message or work status, if any, to be shown.
+	 * @return The updated status line.
+	 */
+	protected synchronized String clearNotification() {
 		notification = Optional.empty();
-		printStatusLineAsync();
+		return printStatusLine();
 	}
 
 	/**
@@ -360,10 +556,9 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
 	 * @param line The line to print.
-	 * @return A future to track completion of the operation.
-	 * @see #printStatusLine()
+	 * @return The future updated status line.
 	 */
-	public CompletableFuture<Void> printLineAsync(@Nonnull final CharSequence line) {
+	public CompletableFuture<String> printLineAsync(@Nonnull final CharSequence line) {
 		return printLinesAsync(singleton(line));
 	}
 
@@ -373,10 +568,9 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @implSpec This method delegates to {@link #printLines(Iterable)}.
 	 * @param lines The lines to print.
-	 * @return A future to track completion of the operation.
-	 * @see #printStatusLine()
+	 * @return The future updated status line.
 	 */
-	public CompletableFuture<Void> printLinesAsync(@Nonnull final CharSequence... lines) {
+	public CompletableFuture<String> printLinesAsync(@Nonnull final CharSequence... lines) {
 		return printLinesAsync(List.of(lines));
 	}
 
@@ -385,11 +579,10 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * information up. The lines are guaranteed to be grouped together.
 	 * @apiNote This is useful for providing some useful information in addition to the status line.
 	 * @param lines The lines to print.
-	 * @return A future to track completion of the operation.
-	 * @see #printStatusLine()
+	 * @return The future updated status line.
 	 */
-	public CompletableFuture<Void> printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
-		return runAsync(() -> printLines(lines), getExecutorService());
+	public CompletableFuture<String> printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
+		return supplyAsync(() -> printLines(lines), getExecutorService());
 	}
 
 	/**
@@ -401,13 +594,14 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @implSpec The implementation prints each line over the current status, skips to the next line, and prints the current status. This has the effect of
 	 *           scrolling information up and printing a line above the status.
 	 * @param lines The lines to print.
+	 * @return The updated status line.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #printStatusLine()
 	 */
-	protected synchronized void printLines(@Nonnull final Iterable<? extends CharSequence> lines) {
+	protected synchronized String printLines(@Nonnull final Iterable<? extends CharSequence> lines) {
 		final Iterator<? extends CharSequence> lineIterator = lines.iterator();
 		if(!lineIterator.hasNext()) {
-			return; //nothing to do
+			return lastStatusLine; //nothing to do
 		}
 		while(lineIterator.hasNext()) {
 			final CharSequence line = lineIterator.next();
@@ -419,7 +613,24 @@ public class CliStatus<W> implements Executor, Closeable {
 				throw new UncheckedIOException(ioException);
 			}
 		}
-		printStatusLine();
+		return printStatusLine();
+	}
+
+	/**
+	 * Asynchronously clears the current status line by blanking out the status and returning the cursor to the beginning of the line. The cursor does not move to
+	 * the next line.
+	 * @apiNote This is one way to ensure that new information is printed serially after the status line is cleared. Chaining {@link CompletableFuture} allows
+	 *          subsequent operations to occur, such as printing the status line again via {@link #printStatusLine()}. If chaining {@link CompletableFuture}, be
+	 *          sure and specify this instance as the {@link Executor}. Another simpler approach would be to schedule the entire operation using
+	 *          {@link #supplyWithoutStatusLineAsync(Runnable)}.
+	 * @return The updated status line, which will be the empty string.
+	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
+	 */
+	public CompletableFuture<String> clearStatusLineAsync() {
+		return supplyAsync(() -> {
+			clearStatusLine();
+			return "";
+		}, getExecutorService());
 	}
 
 	/**
@@ -438,11 +649,11 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Asynchronously prints (i.e. schedules for printing later) the current status, including the elapsed time, count, and current status file.
-	 * @return A future to track completion of the operation.
+	 * @return The future updated status line.
 	 * @see #printStatusLine()
 	 */
-	public CompletableFuture<Void> printStatusLineAsync() {
-		return runAsync(this::printStatusLine, getExecutorService());
+	public CompletableFuture<String> printStatusLineAsync() {
+		return supplyAsync(this::printStatusLine, getExecutorService());
 	}
 
 	/** Keeps track of the entire last status string to prevent unnecessary re-printing and to determine padding. */
@@ -454,11 +665,12 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
 	 *          {@link #printStatusLineAsync()}.
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
+	 * @return The new status line.
 	 * @see #getElapsedTime()
 	 * @see #getCounter()
 	 * @see #findStatusLabel()
 	 */
-	protected synchronized void printStatusLine() {
+	protected synchronized String printStatusLine() {
 		final StringBuilder statusLineStringBuilder = new StringBuilder();
 		//elapsed time
 		final Duration elapsedTime = getElapsedTime();
@@ -487,6 +699,7 @@ public class CliStatus<W> implements Executor, Closeable {
 			}
 			lastStatusLine = statusLine; //update the last status for checking the next time
 		}
+		return statusLine;
 	}
 
 	/**
