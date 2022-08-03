@@ -41,6 +41,10 @@ import org.slf4j.event.Level;
  * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. There are
  * three sources of the status label, explained at {@link #findStatusLabel()}.
  * <p>
+ * The status by default is shown on {@link System#err}. This is primarily to prevent interference with the main output of the CLI application. See
+ * <a href="https://unix.stackexchange.com/q/331611">Do progress reports/logging information belong on stderr or stdout?</a> for more discussion.
+ * </p>
+ * <p>
  * This status also function as an executor, allowing operations to be executed serially via {@link #execute(Runnable)}, which delegates to the internal
  * executor service.
  * </p>
@@ -65,6 +69,7 @@ import org.slf4j.event.Level;
  *           throwing it anyway. If in the future other output sinks such as {@link Reader} are used with a requirement for better error handling, this approach
  *           can be improved.
  * @author Garret Wilson
+ * @see <a href="https://unix.stackexchange.com/q/331611">Do progress reports/logging information belong on stderr or stdout?</a>
  */
 public class CliStatus<W> implements Executor, Closeable {
 
@@ -138,9 +143,9 @@ public class CliStatus<W> implements Executor, Closeable {
 		return Duration.ofNanos(System.nanoTime() - startTimeNs);
 	}
 
-	/** No-args constructor starting at the current time and printing to {@link System#out}. */
+	/** No-args constructor starting at the current time and printing to {@link System#err}. */
 	public CliStatus() {
-		this(System.out);
+		this(System.err);
 	}
 
 	/**
@@ -152,11 +157,11 @@ public class CliStatus<W> implements Executor, Closeable {
 	}
 
 	/**
-	 * Start time constructor printing to {@link System#out}.
+	 * Start time constructor printing to {@link System#err}.
 	 * @param startTimeNs The time the process started in nanoseconds.
 	 */
 	public CliStatus(final long startTimeNs) {
-		this(System.out, startTimeNs);
+		this(System.err, startTimeNs);
 	}
 
 	/**
@@ -607,7 +612,7 @@ public class CliStatus<W> implements Executor, Closeable {
 			final CharSequence line = lineIterator.next();
 			final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 			try {
-				getOut().append(format("\r%-" + padWidth + "s%s", line, System.lineSeparator()));
+				getOut().append(format("\r%-" + padWidth + "s%s%n", line));
 				lastStatusLine = null; //we're skipping to another line for further status
 			} catch(final IOException ioException) {
 				throw new UncheckedIOException(ioException);
@@ -664,7 +669,8 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * Prints the current status, including the elapsed time, optional count, and label.
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
 	 *          {@link #printStatusLineAsync()}.
-	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
+	 * @implSpec if {@link #getOut()} is an implementation of {@link Flushable}, the output is flushed.
+	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending or flushing information.
 	 * @return The new status line.
 	 * @see #getElapsedTime()
 	 * @see #getCounter()
@@ -693,7 +699,11 @@ public class CliStatus<W> implements Executor, Closeable {
 			//In other words, padding only needs to be added once to overwrite each previous status.
 			final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 			try {
-				getOut().append(format("\r%-" + padWidth + "s", statusLine));
+				final Appendable out = getOut();
+				out.append(format("\r%-" + padWidth + "s", statusLine));
+				if(out instanceof Flushable) {
+					((Flushable)out).flush();
+				}
 			} catch(final IOException ioException) {
 				throw new UncheckedIOException(ioException);
 			}
