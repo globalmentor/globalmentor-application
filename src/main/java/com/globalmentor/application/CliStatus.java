@@ -80,7 +80,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
 
 	/** The longest work label to show without constraining its length. */
-	protected static final int WORK_MAX_LABEL_LENGTH = 160;
+	protected static final int WORK_MAX_LABEL_LENGTH = 120;
 
 	private final ExecutorService executorService = newSingleThreadExecutor();
 
