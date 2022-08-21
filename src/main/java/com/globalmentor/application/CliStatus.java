@@ -612,7 +612,7 @@ public class CliStatus<W> implements Executor, Closeable {
 			final CharSequence line = lineIterator.next();
 			final int padWidth = lastStatusLine != null ? lastStatusLine.length() : 1; //pad at least to a nonzero value to avoid a MissingFormatWidthException
 			try {
-				getOut().append(format("\r%-" + padWidth + "s%s%n", line));
+				getOut().append(format("\r%-" + padWidth + "s%n", line));
 				lastStatusLine = null; //we're skipping to another line for further status
 			} catch(final IOException ioException) {
 				throw new UncheckedIOException(ioException);
