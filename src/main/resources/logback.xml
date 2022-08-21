@@ -1,0 +1,20 @@
+<configuration>
+
+	<property scope="context" name="COLORIZER_COLORS" value="boldred@,boldyellow@,boldcyan@,@,@" />
+	<conversionRule conversionWord="colorize" converterClass="org.tuxdude.logback.extensions.LogColorizer" />
+
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+
+	<appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+		<target>System.err</target>
+		<withJansi>true</withJansi>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>[%colorize(%level)] %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<root level="INFO">
+		<appender-ref ref="STDERR" />
+	</root>
+
+</configuration>
