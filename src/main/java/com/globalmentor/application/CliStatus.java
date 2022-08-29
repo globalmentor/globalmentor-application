@@ -79,9 +79,6 @@ public class CliStatus<W> implements Executor, Closeable {
 	/** The default notification severity. */
 	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
 
-	/** The longest work label to show without constraining its length. */
-	protected static final int WORK_MAX_LABEL_LENGTH = 120;
-
 	private final ExecutorService executorService = newSingleThreadExecutor();
 
 	/** @return The executor service being used for queue operations. */
@@ -94,6 +91,17 @@ public class CliStatus<W> implements Executor, Closeable {
 	/** @return The output sink for printing the status. */
 	protected Appendable getOut() {
 		return out;
+	}
+
+	private final int width;
+
+	/**
+	 * Returns the width allocated for the entire status line.
+	 * @apiNote This value does not necessarily reflect the number of characters actually used.
+	 * @return The most recently determined width of the entire status line in characters.
+	 */
+	protected int getWidth() {
+		return width;
 	}
 
 	private final AtomicLong counter = new AtomicLong(0);
@@ -136,42 +144,69 @@ public class CliStatus<W> implements Executor, Closeable {
 		this.total.set(total);
 	}
 
-	private final long startTimeNs;
+	private volatile long startTimeNs;
+
+	/**
+	 * Return the record of starting time.
+	 * @apiNote This value is used for calculating the elapsed time.
+	 * @return The record of starting time in nanoseconds.
+	 * @see #getElapsedTime()
+	 */
+	public long getStartTimeNs() {
+		return startTimeNs;
+	}
+
+	/**
+	 * Sets the record of starting time.
+	 * @apiNote This value is used for calculating the elapsed time.
+	 * @param startTimeNs The time the process started in nanoseconds.
+	 * @see #getElapsedTime()
+	 */
+	public void setStartTimeNs(final long startTimeNs) {
+		this.startTimeNs = startTimeNs;
+	}
 
 	/** @return The duration of time elapsed. */
 	public Duration getElapsedTime() {
 		return Duration.ofNanos(System.nanoTime() - startTimeNs);
 	}
 
-	/** No-args constructor starting at the current time and printing to {@link System#err}. */
+	/**
+	 * No-args constructor starting at the current time, with the maximum width, printing to {@link System#err}.
+	 * @apiNote It is strongly recommended to use a constructor that constraints the status width, unless it can be ensured that any status label length is not so
+	 *          long that it causes wrapping.
+	 */
 	public CliStatus() {
 		this(System.err);
 	}
 
 	/**
-	 * Constructor starting at the current time and printing to a custom out.
+	 * Constructor starting at the current time, with the maximum width, printing to a custom out.
+	 * @apiNote It is strongly recommended to use a constructor that constraints the status width, unless it can be ensured that any status label length is not so
+	 *          long that it causes wrapping.
 	 * @param out The output sink for printing the status.
 	 */
 	public CliStatus(@Nonnull final Appendable out) {
-		this(out, System.nanoTime());
+		this(out, Integer.MAX_VALUE);
 	}
 
 	/**
-	 * Start time constructor printing to {@link System#err}.
-	 * @param startTimeNs The time the process started in nanoseconds.
+	 * Width constructor printing to {@link System#err}, starting at the current time.
+	 * @param width The width of the status in characters.
 	 */
-	public CliStatus(final long startTimeNs) {
-		this(System.err, startTimeNs);
+	public CliStatus(@Nonnegative final int width) {
+		this(System.err, width);
 	}
 
 	/**
-	 * Full constructor.
+	 * Full constructor, starting at the current time.
 	 * @param out The output sink for printing the status.
-	 * @param startTimeNs The time the process started in nanoseconds.
+	 * @param width The width of the status in characters.
 	 */
-	public CliStatus(@Nonnull final Appendable out, final long startTimeNs) {
+	public CliStatus(@Nonnull final Appendable out, @Nonnegative final int width) {
 		this.out = requireNonNull(out);
-		this.startTimeNs = startTimeNs;
+		this.width = checkArgumentNotNegative(width);
+		this.startTimeNs = System.nanoTime();
 	}
 
 	/**
@@ -403,12 +438,44 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Returns a label to represent the current work with no additional information.
-	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #WORK_MAX_LABEL_LENGTH}.
+	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #getMaxWorkLabelLength()}.
 	 * @param work The work to display in the status.
 	 * @return A label for the work itself.
 	 */
 	protected CharSequence toLabel(@Nonnull final W work) {
-		return constrainLabelLength(work.toString(), WORK_MAX_LABEL_LENGTH);
+		return constrainLabelLength(work.toString(), getMaxWorkLabelLength());
+	}
+
+	/**
+	 * Returns the maximum recommended length of the status label component to prevent wrapping. This excludes the elapsed time, count, and other components.
+	 * @implNote This implementation assumes a layout in the form <code>HHH:MM:SS | CCC/TTTT | status label</code>.
+	 * @return The maximum recommended length of the status label component.
+	 * @see #getWidth()
+	 */
+	protected int getMaxStatusLabelLength() {
+		final long count = getCounter().get();
+		final long total = getTotal();
+		final int countLength = (count > 0 ? (int)Math.log10(count) + 1 : 0) + 1; //see https://stackoverflow.com/a/1306751; race condition next-level allowance (+1) 
+		final int totalLength = (total > 0 ? (int)Math.log10(total) + 1 : 0) + 1 + 1; //additional position for total separator (+1) and race condition next-level allowance (+1)
+		final int delta = 11 //`HHH:MM:SS |`; will under-count after ~40 days
+				+ 1 + countLength + totalLength + 2 //` CCC/TTTT |`
+				+ 1; //` `; status line component separator/prefix
+		return getWidth() - delta;
+	}
+
+	/**
+	 * Returns the maximum recommended length of the work label part of the status label.
+	 * @implNote This implementation assumes the work label is preceded by <code>/W: </code>.
+	 * @return The maximum recommended length of the status label component work label subcomponent.
+	 * @see #getMaxStatusLabelLength()
+	 * @see #toStatusLabel(Object)
+	 * @see #toLabel(Object)
+	 */
+	protected int getMaxWorkLabelLength() {
+		final int workCount = getWorkCount();
+		final int workCountLength = (workCount > 0 ? (int)Math.log10(workCount) + 1 : 0) + 1; //see https://stackoverflow.com/a/1306751; race condition next-level allowance (+1) 
+		final int delta = 1 + workCountLength + 2; //`/W: `
+		return getMaxStatusLabelLength() - delta;
 	}
 
 	private Optional<String> statusMessage = Optional.empty();
@@ -667,6 +734,7 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Prints the current status, including the elapsed time, optional count, and label.
+	 * @implSpec The status line is has roughly the following format: <code>HHH:MM:SS | CCC/TTTT | status label</code>
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
 	 *          {@link #printStatusLineAsync()}.
 	 * @implSpec if {@link #getOut()} is an implementation of {@link Flushable}, the output is flushed.

@@ -288,6 +288,17 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
+	 * Creates a status appropriate for this application.
+	 * @apiNote This factory method is particularly important to ensure the status uses the detected terminal width.
+	 * @param <W> The type identifier of work to be represented by the status.
+	 * @return An application status.
+	 * @see #getTerminalWidth()
+	 */
+	protected <W> CliStatus<W> createStatus() {
+		return new CliStatus<>(getTerminalWidth());
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
 	 */
