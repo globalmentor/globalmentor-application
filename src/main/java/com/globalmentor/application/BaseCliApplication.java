@@ -20,6 +20,7 @@ import static com.globalmentor.java.Conditions.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
+import java.util.OptionalInt;
 
 import javax.annotation.*;
 
@@ -251,6 +252,42 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
+	 * The picocli command line instance for the currently executing application. Only available while the program is executing; otherwise <code>null</code>.
+	 * @see #execute()
+	 */
+	@Nullable
+	private volatile CommandLine commandLine;
+
+	/**
+	 * The suggested default terminal width.
+	 * @implSpec This is currently set to the default CLI usage message width for consistency.
+	 */
+	protected static final int DEFAULT_TERMINAL_WIDTH = CommandLine.Model.UsageMessageSpec.DEFAULT_USAGE_WIDTH;
+
+	/**
+	 * Returns the width of the terminal if known.
+	 * @apiNote It is recommended that if the terminal width is not known, {@link #DEFAULT_TERMINAL_WIDTH} be used as the default.
+	 * @implNote Currently this method always returns a value if the application is running because picocli internally uses a fallback value. This may change in
+	 *           the future to indicate whether the terminal width could not be detected. See <a href="https://github.com/remkop/picocli/issues/1756">picocli
+	 *           issue #1756</a> for more discussion.
+	 * @return The detected terminal width, or empty if the application is not executing or the terminal width could not be detected.
+	 * @see #DEFAULT_TERMINAL_WIDTH
+	 */
+	protected OptionalInt findTerminalWidth() {
+		final CommandLine commandLine = this.commandLine;
+		return commandLine != null ? OptionalInt.of(commandLine.getCommandSpec().usageMessage().width()) : OptionalInt.empty();
+	}
+
+	/**
+	 * Returns the width of the terminal or a default.
+	 * @implSpec This implementation uses {@link #DEFAULT_TERMINAL_WIDTH} as the default terminal width if it cannot be detected.
+	 * @return The terminal width.
+	 */
+	protected int getTerminalWidth() {
+		return findTerminalWidth().orElse(DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
 	 */
@@ -261,7 +298,14 @@ public abstract class BaseCliApplication extends AbstractApplication {
 			return EXIT_CODE_SOFTWARE;
 		};
 		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
-		return new CommandLine(this).setExecutionExceptionHandler(errorHandler).execute(getArgs());
+		this.commandLine = new CommandLine(this);
+		try {
+			commandLine.setExecutionExceptionHandler(errorHandler);
+			commandLine.getCommandSpec().usageMessage().autoWidth(true); //turn on autodetection of terminal width
+			return commandLine.execute(getArgs());
+		} finally {
+			commandLine = null;
+		}
 	}
 
 	/**
@@ -272,7 +316,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Override
 	public void run() {
-		CommandLine.usage(this, System.out);
+		commandLine.usage(System.out);
 	}
 
 	/**
