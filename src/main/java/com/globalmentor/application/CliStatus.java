@@ -17,7 +17,7 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.collections.iterators.Iterators.*;
-import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.java.CharSequences.*;
 import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.*;
@@ -31,9 +31,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntSupplier;
 
 import javax.annotation.*;
 
+import org.fusesource.jansi.AnsiPrintStream;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
@@ -57,6 +59,10 @@ import org.slf4j.event.Level;
  * The status also enhances logging by providing methods such as {@link #warnAsync(Logger, String, Object...)} which not only ensure any output is serialized
  * and does not corrupt the status line; but also provides a status notification with the same message as is being logged if the particular log level is enabled
  * for the logger.
+ * </p>
+ * <p>
+ * The status will detect the terminal width based upon where the output is being sent; if the output is being redirected, or the terminal width cannot
+ * otherwise be determined, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} is used.
  * </p>
  * <p>
  * This status printer must be closed after it is no longer in use.
@@ -93,15 +99,21 @@ public class CliStatus<W> implements Executor, Closeable {
 		return out;
 	}
 
-	private final int width;
+	/**
+	 * The supplier that determines the current width of the entire status line. The value returned will be positive if known, non-positive (zero or negative) if
+	 * unknown.
+	 */
+	private final IntSupplier widthSupplier;
 
 	/**
-	 * Returns the width allocated for the entire status line.
-	 * @apiNote This value does not necessarily reflect the number of characters actually used.
-	 * @return The most recently determined width of the entire status line in characters.
+	 * Returns the width allocated for the entire status line. This value may be different across subsequent calls if the terminal window changes size.
+	 * @apiNote This value does not necessarily reflect the number of characters actually used by the status.
+	 * @implSpec If the width cannot be determined, including if the output is redirected, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} will be returned.
+	 * @return The width of the entire status line in characters.
 	 */
 	protected int getWidth() {
-		return width;
+		final int suppliedWidth = widthSupplier.getAsInt();
+		return suppliedWidth > 0 ? suppliedWidth : BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
 	}
 
 	private final AtomicLong counter = new AtomicLong(0);
@@ -144,69 +156,48 @@ public class CliStatus<W> implements Executor, Closeable {
 		this.total.set(total);
 	}
 
-	private volatile long startTimeNs;
-
-	/**
-	 * Return the record of starting time.
-	 * @apiNote This value is used for calculating the elapsed time.
-	 * @return The record of starting time in nanoseconds.
-	 * @see #getElapsedTime()
-	 */
-	public long getStartTimeNs() {
-		return startTimeNs;
-	}
-
-	/**
-	 * Sets the record of starting time.
-	 * @apiNote This value is used for calculating the elapsed time.
-	 * @param startTimeNs The time the process started in nanoseconds.
-	 * @see #getElapsedTime()
-	 */
-	public void setStartTimeNs(final long startTimeNs) {
-		this.startTimeNs = startTimeNs;
-	}
+	private final long startTimeNs;
 
 	/** @return The duration of time elapsed. */
 	public Duration getElapsedTime() {
 		return Duration.ofNanos(System.nanoTime() - startTimeNs);
 	}
 
-	/**
-	 * No-args constructor starting at the current time, with the maximum width, printing to {@link System#err}.
-	 * @apiNote It is strongly recommended to use a constructor that constraints the status width, unless it can be ensured that any status label length is not so
-	 *          long that it causes wrapping.
-	 */
+	/** No-args constructor starting at the current time and printing to {@link System#err}. */
 	public CliStatus() {
 		this(System.err);
 	}
 
 	/**
-	 * Constructor starting at the current time, with the maximum width, printing to a custom out.
-	 * @apiNote It is strongly recommended to use a constructor that constraints the status width, unless it can be ensured that any status label length is not so
-	 *          long that it causes wrapping.
+	 * Constructor starting at the current time and printing to a custom out.
+	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
+	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
 	 */
 	public CliStatus(@Nonnull final Appendable out) {
-		this(out, Integer.MAX_VALUE);
+		this(out, System.nanoTime());
 	}
 
 	/**
-	 * Width constructor printing to {@link System#err}, starting at the current time.
-	 * @param width The width of the status in characters.
+	 * Start time constructor printing to {@link System#err}.
+	 * @param startTimeNs The time the process started in nanoseconds.
 	 */
-	public CliStatus(@Nonnegative final int width) {
-		this(System.err, width);
+	public CliStatus(final long startTimeNs) {
+		this(System.err, startTimeNs);
 	}
 
 	/**
-	 * Full constructor, starting at the current time.
+	 * Full constructor.
+	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
+	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
-	 * @param width The width of the status in characters.
+	 * @param startTimeNs The time the process started in nanoseconds.
+	 * @see System#nanoTime()
 	 */
-	public CliStatus(@Nonnull final Appendable out, @Nonnegative final int width) {
+	public CliStatus(@Nonnull final Appendable out, final long startTimeNs) {
 		this.out = requireNonNull(out);
-		this.width = checkArgumentNotNegative(width);
-		this.startTimeNs = System.nanoTime();
+		this.startTimeNs = startTimeNs;
+		this.widthSupplier = out instanceof AnsiPrintStream ? ((AnsiPrintStream)out)::getTerminalWidth : () -> BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
 	}
 
 	/**
@@ -438,12 +429,13 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Returns a label to represent the current work with no additional information.
-	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #getMaxWorkLabelLength()}.
+	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #getMaxWorkLabelLength()} by inserting
+	 *           ellipsis dots in the middle.
 	 * @param work The work to display in the status.
 	 * @return A label for the work itself.
 	 */
 	protected CharSequence toLabel(@Nonnull final W work) {
-		return constrainLabelLength(work.toString(), getMaxWorkLabelLength());
+		return constrain(work.toString(), getMaxWorkLabelLength(), CONSTRAIN_TRUNCATE_MIDDLE, "...");
 	}
 
 	/**
@@ -800,30 +792,6 @@ public class CliStatus<W> implements Executor, Closeable {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
-	}
-
-	/**
-	 * Constrains a string length by cutting it in the middle if it is too long and inserting an ellipsis in the gap as a single character replacement.
-	 * @param charSequence The label to constrain.
-	 * @param maxLength The maximum length to constrain.
-	 * @return The label constrained to a certain length.
-	 */
-	protected static CharSequence constrainLabelLength(@Nonnull final CharSequence charSequence, @Nonnegative final int maxLength) { //TODO transfer to a library utility method; add tests; create improved version that understands path segments
-		checkArgumentNotNegative(maxLength);
-		if(maxLength == 0) {
-			return "";
-		}
-		if(maxLength == 1) {
-			return "…";
-		}
-		final int length = charSequence.length();
-		if(length <= maxLength) {
-			return charSequence;
-		}
-		final int cutLength = length - maxLength;
-		assert cutLength >= 0;
-		final int cutStart = maxLength / 2;
-		return new StringBuilder().append(charSequence, 0, cutStart).append('…').append(charSequence, cutStart + cutLength - 1, maxLength); //compensate for the character we're adding
 	}
 
 	/**

@@ -4,8 +4,8 @@
 
 	<parent>
 		<groupId>com.globalmentor</groupId>
-		<artifactId>globalmentor-root</artifactId>
-		<version>0.8.10-SNAPSHOT</version>
+		<artifactId>globalmentor-base</artifactId>
+		<version>0.7.1-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
@@ -13,7 +13,7 @@
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
-	<url>http://www.globalmentor.com/software/</url>
+	<url>https://www.globalmentor.com/software/</url>
 	<inceptionYear>1996</inceptionYear>
 
 	<licenses>
