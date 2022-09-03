@@ -17,7 +17,7 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.collections.iterators.Iterators.*;
-import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.java.CharSequences.*;
 import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.*;
@@ -31,9 +31,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntSupplier;
 
 import javax.annotation.*;
 
+import org.fusesource.jansi.AnsiPrintStream;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
@@ -59,6 +61,10 @@ import org.slf4j.event.Level;
  * for the logger.
  * </p>
  * <p>
+ * The status will detect the terminal width based upon where the output is being sent; if the output is being redirected, or the terminal width cannot
+ * otherwise be determined, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} is used.
+ * </p>
+ * <p>
  * This status printer must be closed after it is no longer in use.
  * </p>
  * @param <W> The type identifier of work being performed. This may be a simple identifier, such as a file path.
@@ -79,9 +85,6 @@ public class CliStatus<W> implements Executor, Closeable {
 	/** The default notification severity. */
 	protected static final Level NOTIFICATION_DEFAULT_SEVERITY = Level.INFO;
 
-	/** The longest work label to show without constraining its length. */
-	protected static final int WORK_MAX_LABEL_LENGTH = 120;
-
 	private final ExecutorService executorService = newSingleThreadExecutor();
 
 	/** @return The executor service being used for queue operations. */
@@ -94,6 +97,23 @@ public class CliStatus<W> implements Executor, Closeable {
 	/** @return The output sink for printing the status. */
 	protected Appendable getOut() {
 		return out;
+	}
+
+	/**
+	 * The supplier that determines the current width of the entire status line. The value returned will be positive if known, non-positive (zero or negative) if
+	 * unknown.
+	 */
+	private final IntSupplier widthSupplier;
+
+	/**
+	 * Returns the width allocated for the entire status line. This value may be different across subsequent calls if the terminal window changes size.
+	 * @apiNote This value does not necessarily reflect the number of characters actually used by the status.
+	 * @implSpec If the width cannot be determined, including if the output is redirected, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} will be returned.
+	 * @return The width of the entire status line in characters.
+	 */
+	protected int getWidth() {
+		final int suppliedWidth = widthSupplier.getAsInt();
+		return suppliedWidth > 0 ? suppliedWidth : BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
 	}
 
 	private final AtomicLong counter = new AtomicLong(0);
@@ -150,6 +170,8 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Constructor starting at the current time and printing to a custom out.
+	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
+	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
 	 */
 	public CliStatus(@Nonnull final Appendable out) {
@@ -166,12 +188,16 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Full constructor.
+	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
+	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
 	 * @param startTimeNs The time the process started in nanoseconds.
+	 * @see System#nanoTime()
 	 */
 	public CliStatus(@Nonnull final Appendable out, final long startTimeNs) {
 		this.out = requireNonNull(out);
 		this.startTimeNs = startTimeNs;
+		this.widthSupplier = out instanceof AnsiPrintStream ? ((AnsiPrintStream)out)::getTerminalWidth : () -> BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
 	}
 
 	/**
@@ -403,12 +429,45 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Returns a label to represent the current work with no additional information.
-	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #WORK_MAX_LABEL_LENGTH}.
+	 * @implSpec The default implementation delegates to {@link Object#toString()}, constrained to a length of {@link #getMaxWorkLabelLength()} by inserting
+	 *           ellipsis dots in the middle.
 	 * @param work The work to display in the status.
 	 * @return A label for the work itself.
 	 */
 	protected CharSequence toLabel(@Nonnull final W work) {
-		return constrainLabelLength(work.toString(), WORK_MAX_LABEL_LENGTH);
+		return constrain(work.toString(), getMaxWorkLabelLength(), CONSTRAIN_TRUNCATE_MIDDLE, "...");
+	}
+
+	/**
+	 * Returns the maximum recommended length of the status label component to prevent wrapping. This excludes the elapsed time, count, and other components.
+	 * @implNote This implementation assumes a layout in the form <code>HHH:MM:SS | CCC/TTTT | status label</code>.
+	 * @return The maximum recommended length of the status label component.
+	 * @see #getWidth()
+	 */
+	protected int getMaxStatusLabelLength() {
+		final long count = getCounter().get();
+		final long total = getTotal();
+		final int countLength = (count > 0 ? (int)Math.log10(count) + 1 : 0) + 1; //see https://stackoverflow.com/a/1306751; race condition next-level allowance (+1) 
+		final int totalLength = (total > 0 ? (int)Math.log10(total) + 1 : 0) + 1 + 1; //additional position for total separator (+1) and race condition next-level allowance (+1)
+		final int delta = 11 //`HHH:MM:SS |`; will under-count after ~40 days
+				+ 1 + countLength + totalLength + 2 //` CCC/TTTT |`
+				+ 1; //` `; status line component separator/prefix
+		return getWidth() - delta;
+	}
+
+	/**
+	 * Returns the maximum recommended length of the work label part of the status label.
+	 * @implNote This implementation assumes the work label is preceded by <code>/W: </code>.
+	 * @return The maximum recommended length of the status label component work label subcomponent.
+	 * @see #getMaxStatusLabelLength()
+	 * @see #toStatusLabel(Object)
+	 * @see #toLabel(Object)
+	 */
+	protected int getMaxWorkLabelLength() {
+		final int workCount = getWorkCount();
+		final int workCountLength = (workCount > 0 ? (int)Math.log10(workCount) + 1 : 0) + 1; //see https://stackoverflow.com/a/1306751; race condition next-level allowance (+1) 
+		final int delta = 1 + workCountLength + 2; //`/W: `
+		return getMaxStatusLabelLength() - delta;
 	}
 
 	private Optional<String> statusMessage = Optional.empty();
@@ -667,6 +726,7 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Prints the current status, including the elapsed time, optional count, and label.
+	 * @implSpec The status line is has roughly the following format: <code>HHH:MM:SS | CCC/TTTT | status label</code>
 	 * @apiNote Normally applications and subclasses will not call this method directly. Instead they should schedule the status printing later using
 	 *          {@link #printStatusLineAsync()}.
 	 * @implSpec if {@link #getOut()} is an implementation of {@link Flushable}, the output is flushed.
@@ -732,30 +792,6 @@ public class CliStatus<W> implements Executor, Closeable {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
-	}
-
-	/**
-	 * Constrains a string length by cutting it in the middle if it is too long and inserting an ellipsis in the gap as a single character replacement.
-	 * @param charSequence The label to constrain.
-	 * @param maxLength The maximum length to constrain.
-	 * @return The label constrained to a certain length.
-	 */
-	protected static CharSequence constrainLabelLength(@Nonnull final CharSequence charSequence, @Nonnegative final int maxLength) { //TODO transfer to a library utility method; add tests; create improved version that understands path segments
-		checkArgumentNotNegative(maxLength);
-		if(maxLength == 0) {
-			return "";
-		}
-		if(maxLength == 1) {
-			return "…";
-		}
-		final int length = charSequence.length();
-		if(length <= maxLength) {
-			return charSequence;
-		}
-		final int cutLength = length - maxLength;
-		assert cutLength >= 0;
-		final int cutStart = maxLength / 2;
-		return new StringBuilder().append(charSequence, 0, cutStart).append('…').append(charSequence, cutStart + cutLength - 1, maxLength); //compensate for the character we're adding
 	}
 
 	/**

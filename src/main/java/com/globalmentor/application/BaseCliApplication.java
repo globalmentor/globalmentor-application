@@ -92,6 +92,13 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	public static final String CONFIG_KEY_VERSION = "version";
 
 	/**
+	 * The default terminal width if one cannot be determined.
+	 * @see <a href="https://stackoverflow.com/q/4651012">Why is the default terminal width 80 characters?</a>
+	 * @see <a href="https://richarddingwall.name/2008/05/31/is-the-80-character-line-limit-still-relevant/">Is the 80 character line limit still relevant?</a>
+	 */
+	public static final int DEFAULT_TERMINAL_WIDTH = 120;
+
+	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key {@value #CONFIG_KEY_NAME}.
 	 * @see #CONFIG_KEY_NAME
@@ -251,6 +258,13 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
+	 * The picocli command line instance for the currently executing application. Only available while the program is executing; otherwise <code>null</code>.
+	 * @see #execute()
+	 */
+	@Nullable
+	private volatile CommandLine commandLine;
+
+	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
 	 */
@@ -261,7 +275,16 @@ public abstract class BaseCliApplication extends AbstractApplication {
 			return EXIT_CODE_SOFTWARE;
 		};
 		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
-		return new CommandLine(this).setExecutionExceptionHandler(errorHandler).execute(getArgs());
+		this.commandLine = new CommandLine(this);
+		try {
+			commandLine.setExecutionExceptionHandler(errorHandler);
+			final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
+			//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
+			commandLine.getCommandSpec().usageMessage().width(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+			return commandLine.execute(getArgs());
+		} finally {
+			commandLine = null;
+		}
 	}
 
 	/**
@@ -272,7 +295,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Override
 	public void run() {
-		CommandLine.usage(this, System.out);
+		commandLine.usage(System.out);
 	}
 
 	/**
