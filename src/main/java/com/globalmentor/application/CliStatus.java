@@ -129,11 +129,49 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Increments the counter and asynchronously updates the status.
+	 * @return The updated count.
 	 * @see #printStatusLineAsync()
 	 */
-	public void incrementCount() {
-		counter.incrementAndGet();
+	public long incrementCount() {
+		final long updatedCount = counter.incrementAndGet();
 		printStatusLineAsync();
+		return updatedCount;
+	}
+
+	/**
+	 * Resets the counter to zero.
+	 * @implSpec This implementation delegates to {@link #setCount(long)}.
+	 * @return The updated count.
+	 * @see #printStatusLineAsync()
+	 */
+	public long resetCount() {
+		return setCount(0);
+	}
+
+	/**
+	 * Sets the counter to the given value.
+	 * @apiNote Incrementing the counter by one is better done by {@link #incrementCount()}.
+	 * @param count The new counter value.
+	 * @return The updated count.
+	 * @see #printStatusLineAsync()
+	 */
+	public long setCount(final long count) {
+		counter.set(count);
+		printStatusLineAsync();
+		return count;
+	}
+
+	/**
+	 * Changes the counter by a given delta.
+	 * @apiNote Incrementing the counter by one is better done by {@link #incrementCount()}.
+	 * @param delta The amount to change the count, which may be positive, negative, or zero.
+	 * @return The updated count.
+	 * @see #printStatusLineAsync()
+	 */
+	public long changeCount(final long delta) {
+		final long updatedCount = counter.addAndGet(delta);
+		printStatusLineAsync();
+		return updatedCount;
 	}
 
 	private final AtomicLong total = new AtomicLong(-1);
