@@ -20,6 +20,7 @@ import static com.globalmentor.java.Conditions.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
+import java.time.Duration;
 
 import javax.annotation.*;
 
@@ -28,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import com.github.dtmo.jfiglet.*;
+import com.globalmentor.time.Durations;
 
 import io.clogr.*;
 import io.confound.config.*;
@@ -63,6 +65,11 @@ import picocli.CommandLine.Model.CommandSpec;
  * <p>
  * By default this class merely prints the command-line usage. This can be overridden for programs with specific functionality, but if the application requires
  * a command then the command methods can be added and annotated separately, with the default {@link #run()} method remaining for displaying an explanation.
+ * </p>
+ * 
+ * <p>
+ * This class overrides the default CLI option converter for {@link Duration}, which only accepted input in the form
+ * <code><mark>P</mark>7d<mark>T</mark>6h5m4.321s</code>, allowing for more lenient input such as <code>7d6h5m4.321s</code>.
  * </p>
  * 
  * <p>
@@ -278,6 +285,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		this.commandLine = new CommandLine(this);
 		try {
 			commandLine.setExecutionExceptionHandler(errorHandler);
+			commandLine.registerConverter(Duration.class, Durations::parseUserInput);
 			final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 			//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
 			commandLine.getCommandSpec().usageMessage().width(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
