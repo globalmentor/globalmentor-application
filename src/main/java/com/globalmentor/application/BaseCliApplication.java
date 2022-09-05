@@ -311,9 +311,9 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
 	 */
 	@Override
-	public void exit(int status) {
+	public void cleanup() throws Exception {
 		AnsiConsole.systemUninstall();
-		super.exit(status);
+		super.cleanup();
 	}
 
 	/**
