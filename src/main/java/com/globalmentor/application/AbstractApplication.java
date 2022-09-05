@@ -168,7 +168,7 @@ public abstract class AbstractApplication implements Application {
 	 *         or empty if no shutdown delay has been configured.
 	 */
 	protected Optional<Duration> findShutdownDelay() {
-		return Optional.of(shutdownDelay);
+		return Optional.ofNullable(shutdownDelay);
 	}
 
 	/**
@@ -246,6 +246,14 @@ public abstract class AbstractApplication implements Application {
 	}
 
 	/**
+	 * Called just before the application finally exits. When this method is called, {@link #cleanup()} is guaranteed to have been called (although there is no
+	 * guarantee that it completed successfully). Once this method returns, successfully or unsuccessfully, the application will exit.
+	 * @implSpec The default version does nothing.
+	 */
+	protected void onExit() {
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * @apiNote This version normally should not be overridden. Any overridden version must either call this version or ensure that it meets the contractual
 	 *          requirements of this method.
@@ -254,11 +262,16 @@ public abstract class AbstractApplication implements Application {
 	public void exit(final int status) {
 		try {
 			cleanup();
-		} catch(final Exception exception) {
-			System.err.println("Error during application cleanup.");
-			exception.printStackTrace(System.err);
+		} catch(final Throwable throwable) {
+			System.err.println("Error during application cleanup."); //advise of any errors; otherwise the system will exit and they will be lost
+			throwable.printStackTrace(System.err);
+		} finally {
+			try {
+				onExit(); //any errors from onExit() will likely be lost
+			} finally {
+				System.exit(status); //close the program with the given exit status		
+			}
 		}
-		System.exit(status); //close the program with the given exit status		
 	}
 
 	/**

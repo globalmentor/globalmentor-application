@@ -177,10 +177,9 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @apiNote Normally this method performs the complementary operations to those performed in {@link #initialize()}, such as uninstalling something installed
 	 *          during initialization.
 	 * @implSpec The default version does nothing.
-	 * @throws Exception if anything goes wrong.
 	 * @see #initialize()
 	 */
-	public default void cleanup() throws Exception {
+	public default void cleanup() {
 	}
 
 	/**
