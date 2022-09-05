@@ -311,9 +311,21 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
 	 */
 	@Override
-	public void exit(int status) {
+	public void cleanup() {
 		AnsiConsole.systemUninstall();
-		super.exit(status);
+		super.cleanup();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This version logs an information message if the application was in the shutdown process already.
+	 */
+	@Override
+	protected void onExit() {
+		super.onExit();
+		if(isShuttingDown()) {
+			getLogger().info("Application shut down gracefully after termination.");
+		}
 	}
 
 	/**

@@ -21,8 +21,9 @@ import static java.util.Objects.*;
 
 import java.io.*;
 import java.nio.file.NoSuchFileException;
-import java.time.LocalDate;
+import java.time.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.prefs.Preferences;
 
 import javax.annotation.*;
@@ -98,12 +99,20 @@ public abstract class AbstractApplication implements Application {
 		this.args = requireNonNull(args);
 	}
 
+	private AtomicBoolean initialized = new AtomicBoolean(false);
+
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This version does nothing.
+	 * @implSpec This version sets up the shutdown hook.
+	 * @implSpec Any overridden version must first call this version.
+	 * @see Runtime#addShutdownHook(Thread)
 	 */
 	@Override
-	public void initialize() throws Exception { //TODO create a flag that only allows initialization once
+	public void initialize() throws Exception {
+		if(initialized.getAndSet(true)) {
+			throw new IllegalStateException("Application already initialized.");
+		}
+		Runtime.getRuntime().addShutdownHook(shutdownHook);
 	}
 
 	/**
@@ -151,6 +160,63 @@ public abstract class AbstractApplication implements Application {
 		return true; //show that everything went OK
 	}
 
+	@Nullable
+	private volatile Duration shutdownDelay = null;
+
+	/**
+	 * @return The delay before shutting down after shutdown is initiated, either by normal exiting or by user-initiated termination such as <code>Ctrl+C</code>;
+	 *         or empty if no shutdown delay has been configured.
+	 */
+	protected Optional<Duration> findShutdownDelay() {
+		return Optional.ofNullable(shutdownDelay);
+	}
+
+	/**
+	 * Sets the delay before shutting down. This delay is performed <em>after</em> {@link #onShutdown()} is called.
+	 * @param shutdownDelay The delay before shutdown.
+	 */
+	protected void setShutdownDelay(@Nonnull final Duration shutdownDelay) {
+		this.shutdownDelay = requireNonNull(shutdownDelay);
+	}
+
+	private volatile boolean shuttingDown = false;
+
+	/**
+	 * Indicates whether the application is currently shutting down. Once this flag reports <code>true</code>, it will never revert to reporting
+	 * <code>false</code> because once started the shutdown process cannot be stopped.
+	 * @return <code>true</code> if the application has started the shutdown sequence.
+	 */
+	protected boolean isShuttingDown() {
+		return shuttingDown;
+	}
+
+	/**
+	 * Shutdown hook installed during initialization.
+	 * @implSpec This hook sets the shutting-down flag and calls {@link #onShutdown()}. It also performs any required delay.
+	 * @see #findShutdownDelay()
+	 */
+	private final Thread shutdownHook = new Thread(() -> {
+		shuttingDown = true;
+		try {
+			onShutdown();
+		} finally {
+			findShutdownDelay().ifPresent(delay -> {
+				try {
+					Thread.sleep(delay.toMillis());
+				} catch(final InterruptedException interruptedException) {
+					//no point in notifying of interruption during shutdown delay; it could be user-initiated if anything
+				}
+			});
+		}
+	});
+
+	/**
+	 * Called when the application is beginning the shutdown process.
+	 * @implSpec The default version does nothing.
+	 */
+	protected void onShutdown() {
+	}
+
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
@@ -177,6 +243,35 @@ public abstract class AbstractApplication implements Application {
 	 */
 	protected boolean canEnd() {
 		return true; //show that we can exit
+	}
+
+	/**
+	 * Called just before the application finally exits. When this method is called, {@link #cleanup()} is guaranteed to have been called (although there is no
+	 * guarantee that it completed successfully). Once this method returns, successfully or unsuccessfully, the application will exit.
+	 * @implSpec The default version does nothing.
+	 */
+	protected void onExit() {
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @apiNote This version normally should not be overridden. Any overridden version must either call this version or ensure that it meets the contractual
+	 *          requirements of this method.
+	 */
+	@Override
+	public void exit(final int status) {
+		try {
+			cleanup();
+		} catch(final Throwable throwable) {
+			System.err.println("Error during application cleanup."); //advise of any errors; otherwise the system will exit and they will be lost
+			throwable.printStackTrace(System.err);
+		} finally {
+			try {
+				onExit(); //any errors from onExit() will likely be lost
+			} finally {
+				System.exit(status); //close the program with the given exit status		
+			}
+		}
 	}
 
 	/**

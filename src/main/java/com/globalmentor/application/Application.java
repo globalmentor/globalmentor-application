@@ -90,7 +90,9 @@ public interface Application extends Runnable, Named<String>, Clogged {
 
 	/**
 	 * Initializes the application. This method is called after construction but before application execution.
+	 * @throws IllegalStateException if the application has already been initialized.
 	 * @throws Exception if anything goes wrong.
+	 * @see #cleanup()
 	 */
 	public void initialize() throws Exception;
 
@@ -166,17 +168,32 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public void end(@Nonnegative final int status);
 
 	/**
-	 * Exits the application immediately with the given status without checking to see if exit should be performed.
+	 * Performs cleanup necessary for the application before final shutdown. Under normal circumstances this method is called immediately before final system
+	 * exit. It is undefined what will happen if this method is called multiple times.
+	 * <p>
+	 * This method is only called during <em>normal shutdown</em> of the application. If the application is terminated in response to user input, such as by
+	 * <code>Ctrl+C</code>, this method will not be called; any cleanup must be performed manually as needed.
+	 * </p>
+	 * @apiNote Normally this method performs the complementary operations to those performed in {@link #initialize()}, such as uninstalling something installed
+	 *          during initialization.
+	 * @implSpec The default version does nothing.
+	 * @see #initialize()
+	 */
+	public default void cleanup() {
+	}
+
+	/**
+	 * Exits the application immediately with the given status without checking to see if exit should be performed. This method calls {@link #cleanup()} and
+	 * delegates to {@link System#exit(int)}.
 	 * @apiNote This method normally will never return.
-	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred.
-	 * @implSpec The default implementation delegates to {@link System#exit(int)}.
+	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred so that cleanup
+	 *          can occur.
 	 * @param status The exit status.
 	 * @throws SecurityException if a security manager exists and its {@link SecurityManager#checkExit(int)} method doesn't allow exit with the specified status.
+	 * @see #cleanup()
 	 * @see System#exit(int)
 	 */
-	public default void exit(final int status) {
-		System.exit(status); //close the program with the given exit status		
-	}
+	public void exit(final int status);
 
 	/**
 	 * Reports an error condition to the user. A message will be added as appropriate.
