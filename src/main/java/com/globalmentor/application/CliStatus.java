@@ -39,6 +39,8 @@ import org.fusesource.jansi.AnsiPrintStream;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
+import com.globalmentor.time.ElapsingTime;
+
 /**
  * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. There are
  * three sources of the status label, explained at {@link #findStatusLabel()}.
@@ -194,11 +196,11 @@ public class CliStatus<W> implements Executor, Closeable {
 		this.total.set(total);
 	}
 
-	private final long startTimeNs;
+	private final ElapsingTime elapsingTime;
 
 	/** @return The duration of time elapsed. */
 	public Duration getElapsedTime() {
-		return Duration.ofNanos(System.nanoTime() - startTimeNs);
+		return elapsingTime.get();
 	}
 
 	/** No-args constructor starting at the current time and printing to {@link System#err}. */
@@ -211,17 +213,18 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
 	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
+	 * @see ElapsingTime#sinceNow()
 	 */
 	public CliStatus(@Nonnull final Appendable out) {
-		this(out, System.nanoTime());
+		this(out, ElapsingTime.sinceNow());
 	}
 
 	/**
 	 * Start time constructor printing to {@link System#err}.
-	 * @param startTimeNs The time the process started in nanoseconds.
+	 * @param elapsingTime An existing record of elapsing time.
 	 */
-	public CliStatus(final long startTimeNs) {
-		this(System.err, startTimeNs);
+	public CliStatus(@Nonnull final ElapsingTime elapsingTime) {
+		this(System.err, elapsingTime);
 	}
 
 	/**
@@ -229,12 +232,11 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
 	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
-	 * @param startTimeNs The time the process started in nanoseconds.
-	 * @see System#nanoTime()
+	 * @param elapsingTime An existing record of elapsing time.
 	 */
-	public CliStatus(@Nonnull final Appendable out, final long startTimeNs) {
+	public CliStatus(@Nonnull final Appendable out, @Nonnull final ElapsingTime elapsingTime) {
 		this.out = requireNonNull(out);
-		this.startTimeNs = startTimeNs;
+		this.elapsingTime = requireNonNull(elapsingTime);
 		this.widthSupplier = out instanceof AnsiPrintStream ? ((AnsiPrintStream)out)::getTerminalWidth : () -> BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
 	}
 
