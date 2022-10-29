@@ -4,8 +4,8 @@
 
 	<parent>
 		<groupId>com.globalmentor</groupId>
-		<artifactId>globalmentor-base</artifactId>
-		<version>0.7.3-SNAPSHOT</version>
+		<artifactId>globalmentor-root</artifactId>
+		<version>0.8.14-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
@@ -38,6 +38,7 @@
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-core</artifactId>
+			<version>0.7.3</version>
 		</dependency>
 
 		<dependency>
@@ -49,7 +50,7 @@
 		<dependency>
 			<groupId>io.confound</groupId>
 			<artifactId>confound-file</artifactId>
-			<version>0.7.3</version>
+			<version>0.7.4-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>

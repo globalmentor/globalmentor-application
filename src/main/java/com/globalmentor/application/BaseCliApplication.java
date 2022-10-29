@@ -17,10 +17,12 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
+import static java.lang.String.format;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
 import java.time.Duration;
+import java.util.*;
 
 import javax.annotation.*;
 
@@ -33,7 +35,6 @@ import com.globalmentor.time.Durations;
 
 import io.clogr.*;
 import io.confound.config.*;
-import io.confound.config.file.ResourcesConfigurationManager;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 import picocli.CommandLine.Model.CommandSpec;
@@ -50,17 +51,11 @@ import picocli.CommandLine.Model.CommandSpec;
  * }
  * </pre>
  * <p>
- * This class expects a configuration file with the same name as the concrete application class (the subclass of this class) with a base extension of
- * <code>-config</code>, loaded via Confound from the resources in the same path as the application class. For example the following might be stored as
- * <code>ExampleApp-config.properties</code>:
+ * In order to return version information with the <code>--version</code> CLI option, this class expects build-related information to be stored in a
+ * configuration file with the same name as the concrete application class (the subclass of this class) with a base extension of <code>-build</code> (e.g.
+ * <code>FooBarApp-build.properties</code>), loaded via Confound from the resources in the same path as the application class. For more information see
+ * {@link Application#loadBuildInfo(Class)}.
  * </p>
- * 
- * <pre>
- * {@code
- * name=${project.name}
- * version=${project.version}
- * }
- * </pre>
  * 
  * <p>
  * By default this class merely prints the command-line usage. This can be overridden for programs with specific functionality, but if the application requires
@@ -92,12 +87,6 @@ import picocli.CommandLine.Model.CommandSpec;
 @Command(versionProvider = BaseCliApplication.MetadataProvider.class, mixinStandardHelpOptions = true)
 public abstract class BaseCliApplication extends AbstractApplication {
 
-	/** The configuration key containing the version of the program. */
-	public static final String CONFIG_KEY_NAME = "name";
-
-	/** The configuration key containing the version of the program. */
-	public static final String CONFIG_KEY_VERSION = "version";
-
 	/**
 	 * The default terminal width if one cannot be determined.
 	 * @see <a href="https://stackoverflow.com/q/4651012">Why is the default terminal width 80 characters?</a>
@@ -108,33 +97,25 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key {@value #CONFIG_KEY_NAME}.
-	 * @see #CONFIG_KEY_NAME
 	 * @throws ConfigurationException if there was an error retrieving the configured name or the name could not be found.
+	 * @see #loadBuildInfo()
+	 * @see #CONFIG_KEY_NAME
 	 */
 	@Override
 	public String getName() {
-		try {
-			return ResourcesConfigurationManager.loadConfigurationForClass(getClass())
-					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException).getString(CONFIG_KEY_NAME);
-		} catch(final IOException ioException) {
-			throw new ConfigurationException(ioException);
-		}
+		return loadBuildInfo().getString(CONFIG_KEY_NAME);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key {@value #CONFIG_KEY_VERSION}.
-	 * @see #CONFIG_KEY_VERSION
 	 * @throws ConfigurationException if there was an error retrieving the configured name or the name could not be found.
+	 * @see #loadBuildInfo()
+	 * @see #CONFIG_KEY_VERSION
 	 */
 	@Override
 	public String getVersion() {
-		try {
-			return ResourcesConfigurationManager.loadConfigurationForClass(getClass())
-					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException).getString(CONFIG_KEY_VERSION);
-		} catch(final IOException ioException) {
-			throw new ConfigurationException(ioException);
-		}
+		return loadBuildInfo().getString(CONFIG_KEY_VERSION);
 	}
 
 	private final Level defaultLogLevel;
@@ -336,16 +317,14 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	protected void logAppInfo() {
 		final FigletRenderer figletRenderer;
-		final Configuration appConfiguration;
 		try {
-			appConfiguration = ResourcesConfigurationManager.loadConfigurationForClass(getClass())
-					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException);
 			figletRenderer = new FigletRenderer(FigFontResources.loadFigFontResource(FigFontResources.BIG_FLF));
 		} catch(final IOException ioException) {
 			throw new ConfigurationException(ioException);
 		}
-		final String appName = appConfiguration.getString(CONFIG_KEY_NAME);
-		final String appVersion = appConfiguration.getString(CONFIG_KEY_VERSION);
+		final Configuration buildInfo = loadBuildInfo();
+		final String appName = buildInfo.getString(CONFIG_KEY_NAME);
+		final String appVersion = buildInfo.getString(CONFIG_KEY_VERSION);
 		final Logger logger = getLogger();
 		logger.info("\n{}{}{}", ansi().bold().fg(Ansi.Color.GREEN), figletRenderer.renderText(appName), ansi().reset());
 		logger.info("{} {}\n", appName, appVersion);
@@ -383,20 +362,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
-	 * Strategy for retrieving the application name and version from the configuration.
-	 * <p>
-	 * This class expects a configuration file with the same name as the application class indicated in the constructor with a base extension of
-	 * <code>-config</code>, such as <code>ExampleApp-config.properties</code>, loaded via Confound from the resources in the same path as the application class.
-	 * For example:
-	 * </p>
-	 * 
-	 * <pre>
-	 * {@code
-	 * name=${project.name}
-	 * version=${project.version}
-	 * }
-	 * </pre>
-	 * 
+	 * Strategy for retrieving the application name and version from the configuration. For more information on build information storage see
+	 * {@link Application#loadBuildInfo(Class)}. The {@value Application#CONFIG_KEY_NAME} and {@value Application#CONFIG_KEY_VERSION} properties are required. The
+	 * properties {@value Application#CONFIG_KEY_NAME} <code>name</code> and <code>version</code> properties are required. The
+	 * {@value Application#CONFIG_KEY_BUILT_AT} and {@value Application#CONFIG_KEY_COPYRIGHT} properties are optional.
 	 * @author Garret Wilson
 	 */
 	protected static class MetadataProvider implements IVersionProvider {
@@ -412,15 +381,24 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 		/**
 		 * {@inheritDoc}
-		 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key
-		 *           {@value BaseCliApplication#CONFIG_KEY_VERSION}.
+		 * @implSpec This implementation delegates to {@link Application#loadBuildInfo(Class)} to load build information.
+		 * @see BaseCliApplication#CONFIG_KEY_NAME
 		 * @see BaseCliApplication#CONFIG_KEY_VERSION
-		 * @throws ConfigurationException if there was an error retrieving the configured name or the name could not be found.
+		 * @see BaseCliApplication#CONFIG_KEY_BUILT_AT
+		 * @see BaseCliApplication#CONFIG_KEY_COPYRIGHT
+		 * @throws ConfigurationException if there was an error retrieving the build information or the build information contained no name and/or version
+		 *           information.
 		 */
 		@Override
 		public String[] getVersion() throws Exception {
-			return new String[] {ResourcesConfigurationManager.loadConfigurationForClass(commandSpec.userObject().getClass())
-					.orElseThrow(ResourcesConfigurationManager::createConfigurationNotFoundException).getString(CONFIG_KEY_VERSION)};
+			final Configuration buildInfo = Application.loadBuildInfo(commandSpec.userObject().getClass());
+			final List<String> versionLines = new ArrayList<>();
+			versionLines.add(format("%s %s", buildInfo.getString(CONFIG_KEY_NAME), buildInfo.getString(CONFIG_KEY_VERSION))); //e.g. "FooBar 1.2.3"
+			buildInfo.findString(CONFIG_KEY_BUILT_AT).ifPresent(builtAt -> versionLines.add(format("Built at %s.", builtAt))); //e.g. "Built at 2022-10-26T12:34:56Z."
+			final String javaVendor = System.getProperty("java.vendor");
+			versionLines.add(format("Java (%s) %s", javaVendor, Runtime.version())); //e.g. "Java (Vendor) 17.x.x"
+			buildInfo.findString(CONFIG_KEY_COPYRIGHT).ifPresent(versionLines::add); //e.g. "Copyright © 2022 Acme Company"
+			return versionLines.toArray(String[]::new);
 		}
 
 	}

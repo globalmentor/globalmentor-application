@@ -30,6 +30,9 @@ import javax.annotation.*;
 
 import com.globalmentor.net.*;
 
+import io.confound.config.Configuration;
+import io.confound.config.ConfigurationException;
+
 /**
  * An abstract implementation of an application that by default is a console application.
  * @implSpec Errors are written in simple form to {@link System#err}.
@@ -37,6 +40,17 @@ import com.globalmentor.net.*;
  * @author Garret Wilson
  */
 public abstract class AbstractApplication implements Application {
+
+	/**
+	 * Loads build information for an application.
+	 * @implSpec This implementation delegates to {@link Application#loadBuildInfo(Class)} passing the current application class.
+	 * @return The loaded application build information.
+	 * @throws ConfigurationException If an I/O error occurs, or there is invalid data or invalid state preventing the configuration from being loaded.
+	 * @see Application#loadBuildInfo(Class)
+	 */
+	protected Configuration loadBuildInfo() throws ConfigurationException {
+		return Application.loadBuildInfo(getClass());
+	}
 
 	/** The authenticator object used to retrieve client authentication, or <code>null</code> if there is no authenticator. */
 	private Authenticable authenticator = null;
