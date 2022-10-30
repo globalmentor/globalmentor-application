@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.7.8-SNAPSHOT</version>
+	<version>0.7.8</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
@@ -45,13 +45,13 @@
 		<dependency>
 			<groupId>io.clogr</groupId>
 			<artifactId>clogr-logback-provider</artifactId>
-			<version>0.8.1</version>
+			<version>0.8.4</version>
 		</dependency>
 
 		<dependency>
 			<groupId>io.confound</groupId>
 			<artifactId>confound-file</artifactId>
-			<version>0.7.4-SNAPSHOT</version>
+			<version>0.7.4</version>
 		</dependency>
 
 		<dependency>
