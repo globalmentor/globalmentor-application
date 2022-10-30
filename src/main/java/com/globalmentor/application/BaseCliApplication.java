@@ -98,24 +98,24 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * {@inheritDoc}
 	 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key {@value #CONFIG_KEY_NAME}.
 	 * @throws ConfigurationException if there was an error retrieving the configured name or the name could not be found.
-	 * @see #loadBuildInfo()
+	 * @see #getBuildInfo()
 	 * @see #CONFIG_KEY_NAME
 	 */
 	@Override
 	public String getName() {
-		return loadBuildInfo().getString(CONFIG_KEY_NAME);
+		return getBuildInfo().getString(CONFIG_KEY_NAME);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation retrieves the name from resources for the concrete application class using the resource key {@value #CONFIG_KEY_VERSION}.
 	 * @throws ConfigurationException if there was an error retrieving the configured name or the name could not be found.
-	 * @see #loadBuildInfo()
+	 * @see #getBuildInfo()
 	 * @see #CONFIG_KEY_VERSION
 	 */
 	@Override
 	public String getVersion() {
-		return loadBuildInfo().getString(CONFIG_KEY_VERSION);
+		return getBuildInfo().getString(CONFIG_KEY_VERSION);
 	}
 
 	private final Level defaultLogLevel;
@@ -322,7 +322,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		} catch(final IOException ioException) {
 			throw new ConfigurationException(ioException);
 		}
-		final Configuration buildInfo = loadBuildInfo();
+		final Configuration buildInfo = getBuildInfo();
 		final String appName = buildInfo.getString(CONFIG_KEY_NAME);
 		final String appVersion = buildInfo.getString(CONFIG_KEY_VERSION);
 		final Logger logger = getLogger();
@@ -366,6 +366,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * {@link Application#loadBuildInfo(Class)}. The {@value Application#CONFIG_KEY_NAME} and {@value Application#CONFIG_KEY_VERSION} properties are required. The
 	 * properties {@value Application#CONFIG_KEY_NAME} <code>name</code> and <code>version</code> properties are required. The
 	 * {@value Application#CONFIG_KEY_BUILT_AT} and {@value Application#CONFIG_KEY_COPYRIGHT} properties are optional.
+	 * @implSpec This class only works in an environment such as picocli that injects a {@link CommandSpec} with a {@link CommandSpec#userObject()} that is an
+	 *           instance of {@link AbstractApplication}.
 	 * @author Garret Wilson
 	 */
 	protected static class MetadataProvider implements IVersionProvider {
@@ -381,7 +383,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 		/**
 		 * {@inheritDoc}
-		 * @implSpec This implementation delegates to {@link Application#loadBuildInfo(Class)} to load build information.
+		 * @implSpec This implementation delegates to {@link AbstractApplication#getBuildInfo()} to load build information from the injected
+		 *           {@link CommandSpec#userObject()}.
 		 * @see BaseCliApplication#CONFIG_KEY_NAME
 		 * @see BaseCliApplication#CONFIG_KEY_VERSION
 		 * @see BaseCliApplication#CONFIG_KEY_BUILT_AT
@@ -391,7 +394,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		 */
 		@Override
 		public String[] getVersion() throws Exception {
-			final Configuration buildInfo = Application.loadBuildInfo(commandSpec.userObject().getClass());
+			final Configuration buildInfo = ((AbstractApplication)commandSpec.userObject()).getBuildInfo();
 			final List<String> versionLines = new ArrayList<>();
 			versionLines.add(format("%s %s", buildInfo.getString(CONFIG_KEY_NAME), buildInfo.getString(CONFIG_KEY_VERSION))); //e.g. "FooBar 1.2.3"
 			buildInfo.findString(CONFIG_KEY_BUILT_AT).ifPresent(builtAt -> versionLines.add(format("Built at %s.", builtAt))); //e.g. "Built at 2022-10-26T12:34:56Z."

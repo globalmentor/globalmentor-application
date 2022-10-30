@@ -16,8 +16,6 @@
 
 package com.globalmentor.application;
 
-import static java.lang.String.format;
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -74,15 +72,14 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * version=1.2.3
 	 * }
 	 * </pre>
-	 * @return The loaded application build information.
+	 * @return The loaded application build information, which will not be present if no appropriate configuration was found.
 	 * @throws NullPointerException if the context class is <code>null</code>.
 	 * @throws ConfigurationException If an I/O error occurs, or there is invalid data or invalid state preventing the configuration from being loaded.
 	 * @see #CONFIG_CLASSIFIER_BUILD
 	 */
-	public static Configuration loadBuildInfo(@Nonnull final Class<?> applicationClass) throws ConfigurationException {
+	public static Optional<Configuration> loadBuildInfo(@Nonnull final Class<?> applicationClass) throws ConfigurationException {
 		try {
-			return ResourcesConfigurationManager.loadConfigurationForClass(applicationClass, CONFIG_CLASSIFIER_BUILD)
-					.orElseThrow(() -> new ConfigurationException(format("No build information found for class %s.", applicationClass.getName())));
+			return ResourcesConfigurationManager.loadConfigurationForClass(applicationClass, CONFIG_CLASSIFIER_BUILD);
 		} catch(final IOException ioException) {
 			throw new ConfigurationException(ioException);
 		}
