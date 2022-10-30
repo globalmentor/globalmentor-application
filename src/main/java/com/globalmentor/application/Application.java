@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
@@ -26,6 +27,9 @@ import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
 
 import io.clogr.Clogged;
+import io.confound.config.Configuration;
+import io.confound.config.ConfigurationException;
+import io.confound.config.file.ResourcesConfigurationManager;
 
 /**
  * A general application.
@@ -38,8 +42,48 @@ import io.clogr.Clogged;
  */
 public interface Application extends Runnable, Named<String>, Clogged {
 
+	/** The classifier to use for determining a build information configuration resource for this class. */
+	public static final String CONFIG_CLASSIFIER_BUILD = "build";
+
+	/** The configuration key containing the version of the program. */
+	public static final String CONFIG_KEY_NAME = "name";
+
+	/** The configuration key containing the version of the program. */
+	public static final String CONFIG_KEY_VERSION = "version";
+
+	/** The optional configuration key containing the ISO 8601 build timestamp of the program. */
+	public static final String CONFIG_KEY_BUILT_AT = "builtAt";
+
+	/** The optional configuration key containing the copyright notice of the program. */
+	public static final String CONFIG_KEY_COPYRIGHT = "copyright";
+
 	/** Exit code indicating a successful termination. */
 	public static final int EXIT_CODE_OK = 0;
+
+	/**
+	 * Loads build information for an application.
+	 * @param applicationClass The application class providing the resource context for loading.
+	 * @implSpec This implementation loads build-related information using Confound, stored in a configuration file with the same name as the concrete application
+	 *           class with a {@value #CONFIG_CLASSIFIER_BUILD} classifier. Confound by default recognizes both <code>FooBarApp-build.properties</code> and
+	 *           <code>FooBarApp-build.xml.properties</code> forms for loading the information from {@link Properties}, but other formats may be plugged in using
+	 *           the Confound service provider mechanism. For example the following might be stored as <code>FooBarApp-build.properties</code>:<pre>
+	 * {@code
+	 * name=FooBar Application
+	 * version=1.2.3
+	 * }
+	 * </pre>
+	 * @return The loaded application build information, which will not be present if no appropriate configuration was found.
+	 * @throws NullPointerException if the context class is <code>null</code>.
+	 * @throws ConfigurationException If an I/O error occurs, or there is invalid data or invalid state preventing the configuration from being loaded.
+	 * @see #CONFIG_CLASSIFIER_BUILD
+	 */
+	public static Optional<Configuration> loadBuildInfo(@Nonnull final Class<?> applicationClass) throws ConfigurationException {
+		try {
+			return ResourcesConfigurationManager.loadConfigurationForClass(applicationClass, CONFIG_CLASSIFIER_BUILD);
+		} catch(final IOException ioException) {
+			throw new ConfigurationException(ioException);
+		}
+	}
 
 	/**
 	 * Exit code indicating execution failure.
@@ -67,7 +111,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	/** @return The command-line arguments of the application. */
 	public String[] getArgs();
 
-	/** @return The application version string . */
+	/** @return The application version string. */
 	public String getVersion();
 
 	/**

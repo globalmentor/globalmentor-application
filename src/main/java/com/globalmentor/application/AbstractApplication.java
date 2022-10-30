@@ -17,6 +17,7 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
+import static java.lang.String.format;
 import static java.util.Objects.*;
 
 import java.io.*;
@@ -30,6 +31,8 @@ import javax.annotation.*;
 
 import com.globalmentor.net.*;
 
+import io.confound.config.*;
+
 /**
  * An abstract implementation of an application that by default is a console application.
  * @implSpec Errors are written in simple form to {@link System#err}.
@@ -37,6 +40,27 @@ import com.globalmentor.net.*;
  * @author Garret Wilson
  */
 public abstract class AbstractApplication implements Application {
+
+	private volatile Configuration buildInfo = null;
+
+	/**
+	 * Retrieves build information for an application.
+	 * @implSpec This implementation delegates to {@link Application#loadBuildInfo(Class)} passing the current application class. The build information is loaded
+	 *           once and cached. If no build information is available, a warning is logged and placeholder information is generated and returned.
+	 * @return The loaded application build information.
+	 * @throws ConfigurationException If an I/O error occurs, or there is invalid data or invalid state preventing the configuration from being loaded.
+	 * @see Application#loadBuildInfo(Class)
+	 */
+	protected Configuration getBuildInfo() throws ConfigurationException {
+		if(buildInfo == null) { //the race condition here is benign; the first time this is called is probably within a single thread anyway
+			buildInfo = Application.loadBuildInfo(getClass()).orElseGet(() -> {
+				final String applicationClassName = getClass().getSimpleName();
+				getLogger().warn(format("Application %s missing build information.", applicationClassName));
+				return new ObjectMapConfiguration(Map.of(CONFIG_KEY_NAME, applicationClassName, CONFIG_KEY_VERSION, "0.0.0+unknown"));
+			});
+		}
+		return buildInfo;
+	}
 
 	/** The authenticator object used to retrieve client authentication, or <code>null</code> if there is no authenticator. */
 	private Authenticable authenticator = null;
