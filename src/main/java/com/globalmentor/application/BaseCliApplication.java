@@ -269,7 +269,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 			commandLine.registerConverter(Duration.class, Durations::parseUserInput);
 			final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 			//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
-			commandLine.getCommandSpec().usageMessage().width(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+			commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
 			return commandLine.execute(getArgs());
 		} finally {
 			commandLine = null;
