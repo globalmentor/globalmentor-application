@@ -210,10 +210,10 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @implNote If the output implements {@link AnsiPrintStream}, which will be the case if Jansi has been installed, {@link AnsiPrintStream#getTerminalWidth()}
 	 *           will be used to determine the width.
 	 * @param out The output sink for printing the status.
-	 * @see ElapsingTime#sinceNow()
+	 * @see ElapsingTime#fromNow()
 	 */
 	public CliStatus(@Nonnull final Appendable out) {
-		this(out, ElapsingTime.sinceNow());
+		this(out, ElapsingTime.fromNow());
 	}
 
 	/**
