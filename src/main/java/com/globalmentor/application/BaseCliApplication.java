@@ -41,35 +41,26 @@ import picocli.CommandLine.Model.CommandSpec;
 
 /**
  * Base implementation for facilitating creation of a CLI application.
- * <p>
- * A subclass should annotate itself as the main command, e.g.:
- * </p>
+ * <p>A subclass should annotate itself as the main command, e.g.:</p>
  * 
  * <pre>
  * {@code
  * &#64;Command(name = "foobar", description = "FooBar application.")
  * }
  * </pre>
- * <p>
- * In order to return version information with the <code>--version</code> CLI option, this class expects build-related information to be stored in a
+ * <p>In order to return version information with the <code>--version</code> CLI option, this class expects build-related information to be stored in a
  * configuration file with the same name as the concrete application class (the subclass of this class) with a base extension of <code>-build</code> (e.g.
  * <code>FooBarApp-build.properties</code>), loaded via Confound from the resources in the same path as the application class. For more information see
- * {@link Application#loadBuildInfo(Class)}.
- * </p>
+ * {@link Application#loadBuildInfo(Class)}.</p>
  * 
- * <p>
- * By default this class merely prints the command-line usage. This can be overridden for programs with specific functionality, but if the application requires
- * a command then the command methods can be added and annotated separately, with the default {@link #run()} method remaining for displaying an explanation.
- * </p>
+ * <p>By default this class merely prints the command-line usage. This can be overridden for programs with specific functionality, but if the application
+ * requires a command then the command methods can be added and annotated separately, with the default {@link #run()} method remaining for displaying an
+ * explanation.</p>
  * 
- * <p>
- * This class overrides the default CLI option converter for {@link Duration}, which only accepted input in the form
- * <code><mark>P</mark>7d<mark>T</mark>6h5m4.321s</code>, allowing for more lenient input such as <code>7d6h5m4.321s</code>.
- * </p>
+ * <p>This class overrides the default CLI option converter for {@link Duration}, which only accepted input in the form
+ * <code><mark>P</mark>7d<mark>T</mark>6h5m4.321s</code>, allowing for more lenient input such as <code>7d6h5m4.321s</code>.</p>
  * 
- * <p>
- * This class sets up the following options:
- * </p>
+ * <p>This class sets up the following options:</p>
  * <dl>
  * <dt><code>--debug</code>, <code>-d</code></dt>
  * <dd>Turns on debug mode and enables debug level logging.</dd>
@@ -180,7 +171,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	private boolean quiet = false;
 
-	/** @return Whether quiet output has been requested. */
+	/**
+	 * Returns whether quite mode is enabled.
+	 * @return Whether quiet output has been requested.
+	 */
 	protected boolean isQuiet() {
 		return quiet;
 	}
@@ -199,7 +193,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	private boolean verbose = false;
 
-	/** @return Whether verbose output has been requested. */
+	/**
+	 * Returns whether verbose mode is enabled.
+	 * @return Whether verbose output has been requested.
+	 */
 	protected boolean isVerbose() {
 		return verbose;
 	}
@@ -229,6 +226,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @param args The command line arguments.
 	 * @param defaultLogLevel The default log level to use if no other log level-related options are indicated.
 	 */
+	@SuppressWarnings("this-escape") //this is somewhat benign, as `updateLogLevel()` will be called again later if/as the various settings get updated, e.g. by picocli; the sequence could possibly be improved, however
 	public BaseCliApplication(@Nonnull final String[] args, final Level defaultLogLevel) {
 		super(args);
 		this.defaultLogLevel = defaultLogLevel;
@@ -371,6 +369,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @author Garret Wilson
 	 */
 	protected static class MetadataProvider implements IVersionProvider {
+
+		/** No-args constructor. */
+		public MetadataProvider() {
+		}
 
 		/**
 		 * Information on the command with which this provider is associated.

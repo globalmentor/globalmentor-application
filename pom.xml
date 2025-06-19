@@ -32,7 +32,7 @@
 	</scm>
 
 	<properties>
-		<maven.compiler.release>11</maven.compiler.release>
+		<maven.compiler.release>21</maven.compiler.release>
 	</properties>
 
 	<dependencies>

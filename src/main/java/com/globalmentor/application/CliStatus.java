@@ -44,31 +44,19 @@ import com.globalmentor.time.ElapsingTime;
 /**
  * Manages a status line for a CLI application, along with the elapsed time, optional counter, and status label based upon current work in progress. There are
  * three sources of the status label, explained at {@link #findStatusLabel()}.
- * <p>
- * The status by default is shown on {@link System#err}. This is primarily to prevent interference with the main output of the CLI application. See
- * <a href="https://unix.stackexchange.com/q/331611">Do progress reports/logging information belong on stderr or stdout?</a> for more discussion.
- * </p>
- * <p>
- * This status also function as an executor, allowing operations to be executed serially via {@link #execute(Runnable)}, which delegates to the internal
- * executor service.
- * </p>
- * <p>
- * If some operation might interfere with the status line (e.g. printing some information to the same output, or to another output that eventually is shown in
- * the same output, such as a status at {@link System#out} and an error on {@link System#err} but both displayed in the same terminal), the operation may be
- * serialized with the status using {@link #supplyWithoutStatusLineAsync(Runnable)} to prevent its output from corrupting the status line.
- * </p>
- * <p>
- * The status also enhances logging by providing methods such as {@link #warnAsync(Logger, String, Object...)} which not only ensure any output is serialized
+ * <p>The status by default is shown on {@link System#err}. This is primarily to prevent interference with the main output of the CLI application. See
+ * <a href="https://unix.stackexchange.com/q/331611">Do progress reports/logging information belong on stderr or stdout?</a> for more discussion.</p>
+ * <p>This status also function as an executor, allowing operations to be executed serially via {@link #execute(Runnable)}, which delegates to the internal
+ * executor service.</p>
+ * <p>If some operation might interfere with the status line (e.g. printing some information to the same output, or to another output that eventually is shown
+ * in the same output, such as a status at {@link System#out} and an error on {@link System#err} but both displayed in the same terminal), the operation may be
+ * serialized with the status using {@link #supplyWithoutStatusLineAsync(Runnable)} to prevent its output from corrupting the status line.</p>
+ * <p>The status also enhances logging by providing methods such as {@link #warnAsync(Logger, String, Object...)} which not only ensure any output is serialized
  * and does not corrupt the status line; but also provides a status notification with the same message as is being logged if the particular log level is enabled
- * for the logger.
- * </p>
- * <p>
- * The status will detect the terminal width based upon where the output is being sent; if the output is being redirected, or the terminal width cannot
- * otherwise be determined, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} is used.
- * </p>
- * <p>
- * This status printer must be closed after it is no longer in use.
- * </p>
+ * for the logger.</p>
+ * <p>The status will detect the terminal width based upon where the output is being sent; if the output is being redirected, or the terminal width cannot
+ * otherwise be determined, {@link BaseCliApplication#DEFAULT_TERMINAL_WIDTH} is used.</p>
+ * <p>This status printer must be closed after it is no longer in use.</p>
  * @param <W> The type identifier of work being performed. This may be a simple identifier, such as a file path.
  * @implSpec Actual printing synchronizes on the class instance, so subclasses desiring to print an additional status can also synchronize on the instance.
  * @implNote This implementation uses a separate, single-threaded executor for printing to reduce contention and prevent race conditions in status consistency.
@@ -89,14 +77,20 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	private final ExecutorService executorService = newSingleThreadExecutor();
 
-	/** @return The executor service being used for queue operations. */
+	/**
+	 * Retrieves the executor service.
+	 * @return The executor service being used for queue operations.
+	 */
 	protected ExecutorService getExecutorService() {
 		return executorService;
 	}
 
 	private final Appendable out;
 
-	/** @return The output sink for printing the status. */
+	/**
+	 * Returns the status output sink.
+	 * @return The output sink for printing the status.
+	 */
 	protected Appendable getOut() {
 		return out;
 	}
@@ -198,7 +192,10 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	private final ElapsingTime elapsingTime;
 
-	/** @return The duration of time elapsed. */
+	/**
+	 * Returns the current elapsed time.
+	 * @return The duration of time elapsed.
+	 */
 	public Duration getElapsedTime() {
 		return elapsingTime.get();
 	}
@@ -252,11 +249,9 @@ public class CliStatus<W> implements Executor, Closeable {
 	/**
 	 * Serially executes some command that might interfere with status output, ensuring that the status is erased before the operation and then reprinted after
 	 * the operation.
-	 * <p>
-	 * For example a log line might be written to the same output as the status, or it might be written to a different standard output that is being sent to the
-	 * terminal along with the status. In either case writing the information concurrently would result in intermingled text. Executing the command via this
-	 * method would ensure that the log message is written separately from the status update.
-	 * </p>
+	 * <p>For example a log line might be written to the same output as the status, or it might be written to a different standard output that is being sent to
+	 * the terminal along with the status. In either case writing the information concurrently would result in intermingled text. Executing the command via this
+	 * method would ensure that the log message is written separately from the status update.</p>
 	 * @param command The runnable task to execute while the status is suspended.
 	 * @return The future updated status line.
 	 */
@@ -424,6 +419,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	}
 
 	/**
+	 * Returns the current work count.
 	 * @return The current count of work in progress.
 	 * @see #addWork(Object)
 	 * @see #removeWork(Object)
@@ -512,7 +508,10 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	private Optional<String> statusMessage = Optional.empty();
 
-	/** @return The currently set status message, which may not be present. */
+	/**
+	 * Returns the status message, if set.
+	 * @return The currently set status message, which may not be present.
+	 */
 	public synchronized Optional<String> findStatusMessage() {
 		return statusMessage;
 	}
@@ -638,9 +637,7 @@ public class CliStatus<W> implements Executor, Closeable {
 
 	/**
 	 * Retrieves the current status label to display.
-	 * <p>
-	 * There are three sources of the status label, in order of priority:
-	 * </p>
+	 * <p>There are three sources of the status label, in order of priority:</p>
 	 * <ul>
 	 * <li>A <dfn>notification</dfn> returned by {@link #findNotification()}, a temporary change in status message that only last for a certain amount of time.
 	 * <li>A manually-set status <dfn>message</dfn> returned by {@link #findStatusMessage()}. If set, the status message never goes away until cleared, unless it

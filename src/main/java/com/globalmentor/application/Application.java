@@ -33,9 +33,7 @@ import io.confound.config.file.ResourcesConfigurationManager;
 
 /**
  * A general application.
- * <p>
- * To start an application, call the static {@link #start(Application)} method, passing it an application instance.
- * </p>
+ * <p>To start an application, call the static {@link #start(Application)} method, passing it an application instance.</p>
  * @apiNote Although an application implements {@link Runnable}, it should usually be started using {@link #start()}, which will eventually (depending on the
  *          implementation) call {@link #run()}. The {@link #start(Application)} takes care of calling the correct entry point.
  * @author Garret Wilson
@@ -105,13 +103,22 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	/** An array containing no arguments. */
 	public static final String[] NO_ARGUMENTS = new String[0];
 
-	/** @return The authenticator object used to retrieve client authentication. */
+	/**
+	 * Retrieves the application authenticator.
+	 * @return The authenticator object used to retrieve client authentication.
+	 */
 	public Optional<Authenticable> getAuthenticator();
 
-	/** @return The command-line arguments of the application. */
+	/**
+	 * Retrieves the application arguments.
+	 * @return The command-line arguments of the application.
+	 */
 	public String[] getArgs();
 
-	/** @return The application version string. */
+	/**
+	 * Returns the application version.
+	 * @return The application version string.
+	 */
 	public String getVersion();
 
 	/**
@@ -129,7 +136,10 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 */
 	public Preferences getPreferences() throws SecurityException;
 
-	/** @return The expiration date of the application, if there is one. */
+	/**
+	 * Retrieves the application expiration date.
+	 * @return The expiration date of the application, if there is one.
+	 */
 	public Optional<LocalDate> getExpirationDate();
 
 	/**
@@ -214,10 +224,8 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	/**
 	 * Performs cleanup necessary for the application before final shutdown. Under normal circumstances this method is called immediately before final system
 	 * exit. It is undefined what will happen if this method is called multiple times.
-	 * <p>
-	 * This method is only called during <em>normal shutdown</em> of the application. If the application is terminated in response to user input, such as by
-	 * <code>Ctrl+C</code>, this method will not be called; any cleanup must be performed manually as needed.
-	 * </p>
+	 * <p>This method is only called during <em>normal shutdown</em> of the application. If the application is terminated in response to user input, such as by
+	 * <code>Ctrl+C</code>, this method will not be called; any cleanup must be performed manually as needed.</p>
 	 * @apiNote Normally this method performs the complementary operations to those performed in {@link #initialize()}, such as uninstalling something installed
 	 *          during initialization.
 	 * @implSpec The default version does nothing.

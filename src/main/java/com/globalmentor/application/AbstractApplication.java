@@ -188,6 +188,7 @@ public abstract class AbstractApplication implements Application {
 	private volatile Duration shutdownDelay = null;
 
 	/**
+	 * Returns the shutdown delay, if any.
 	 * @return The delay before shutting down after shutdown is initiated, either by normal exiting or by user-initiated termination such as <code>Ctrl+C</code>;
 	 *         or empty if no shutdown delay has been configured.
 	 */
@@ -219,6 +220,7 @@ public abstract class AbstractApplication implements Application {
 	 * @implSpec This hook sets the shutting-down flag and calls {@link #onShutdown()}. It also performs any required delay.
 	 * @see #findShutdownDelay()
 	 */
+	@SuppressWarnings("this-escape") //`this` is not used until shutdown
 	private final Thread shutdownHook = new Thread(() -> {
 		shuttingDown = true;
 		try {
