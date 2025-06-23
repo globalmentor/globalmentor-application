@@ -127,16 +127,72 @@ public abstract class AbstractApplication implements Application {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This version sets up the shutdown hook.
+	 * @apiNote Before overriding this method, see if one of the finer-grained initialization methods such as {@link #initializeApplication()} would be more
+	 *          appropriate.
 	 * @implSpec Any overridden version must first call this version.
-	 * @see Runtime#addShutdownHook(Thread)
+	 * @implSpec This version calls the following other methods in this order:
+	 *           <ol>
+	 *           <li>{@link #initializeSystem()}</li>
+	 *           <li>{@link #initializeApplication()}</li>
+	 *           </ol>
+	 * @throws IllegalStateException if the application has already been initialized (e.g. if this method is called multiple times).
 	 */
 	@Override
 	public void initialize() throws Exception {
 		if(initialized.getAndSet(true)) {
 			throw new IllegalStateException("Application already initialized.");
 		}
+		initializeSystem();
+		initializeApplication();
+	}
+
+	/**
+	 * Initializes things related to the system on which the application will be running.
+	 * @implSpec This version sets up the shutdown hook.
+	 * @implSpec Any overridden version must first call this version.
+	 * @see Runtime#addShutdownHook(Thread)
+	 * @see #cleanupSystem()
+	 */
+	protected void initializeSystem() {
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
+	}
+
+	/**
+	 * Initializes the application itself. {@link #initializeSystem()} will already have been called.
+	 * @see #cleanupApplication()
+	 */
+	protected void initializeApplication() {
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @apiNote Before overriding this method, see if one of the finer-grained cleanup methods such as {@link #cleanupApplication()} would be more appropriate.
+	 * @implSpec Any overridden version must afterward call this version.
+	 * @implSpec This version calls the following other methods in this order:
+	 *           <ol>
+	 *           <li>{@link #cleanupApplication()}</li>
+	 *           <li>{@link #cleanupSystem()}</li>
+	 *           </ol>
+	 * @throws IllegalStateException if the application has already been initialized (e.g. if this method is called multiple times).
+	 */
+	@Override
+	public void cleanup() {
+		cleanupApplication();
+		cleanupSystem();
+	}
+
+	/**
+	 * Cleans up things related to the system on which the application was running.
+	 * @see #initializeSystem()
+	 */
+	protected void cleanupSystem() {
+	}
+
+	/**
+	 * Cleans up the application itself.
+	 * @see #initializeApplication()
+	 */
+	protected void cleanupApplication() {
 	}
 
 	/**

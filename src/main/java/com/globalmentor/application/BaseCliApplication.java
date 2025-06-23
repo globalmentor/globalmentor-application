@@ -234,17 +234,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
-	 */
-	@Override
-	public void initialize() throws Exception {
-		super.initialize();
-		AnsiConsole.systemInstall();
-	}
-
-	/**
-	 * The picocli command line instance for the currently executing application. Only available while the program is executing; otherwise <code>null</code>.
+	 * The picocli command line instance for the currently executing application.
+	 * @implSpec This value is only available after initialization; otherwise <code>null</code>. Once set it is never unset.
 	 * @see #execute()
 	 */
 	@Nullable
@@ -252,26 +243,41 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
+	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
+	 */
+	protected void initializeSystem() {
+		super.initializeSystem();
+		AnsiConsole.systemInstall();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation configures picocli and creates the parsed command line.
 	 */
 	@Override
-	protected int execute() {
+	public void initializeApplication() {
+		super.initializeApplication();
 		final IExecutionExceptionHandler errorHandler = (exception, commandLine, parseResult) -> {
 			reportError(exception);
 			return EXIT_CODE_SOFTWARE;
 		};
-		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
 		this.commandLine = new CommandLine(this);
-		try {
-			commandLine.setExecutionExceptionHandler(errorHandler);
-			commandLine.registerConverter(Duration.class, Durations::parseUserInput);
-			final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
-			//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
-			commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
-			return commandLine.execute(getArgs());
-		} finally {
-			commandLine = null;
-		}
+		commandLine.setExecutionExceptionHandler(errorHandler);
+		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
+		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
+		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
+		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
+	 */
+	@Override
+	protected int execute() {
+		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
+		checkState(commandLine != null, "Missing command-line information; application not properly initialized.");
+		return commandLine.execute(getArgs());
 	}
 
 	/**
@@ -290,9 +296,9 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
 	 */
 	@Override
-	public void cleanup() {
+	protected void cleanupSystem() {
 		AnsiConsole.systemUninstall();
-		super.cleanup();
+		super.cleanupSystem();
 	}
 
 	/**
