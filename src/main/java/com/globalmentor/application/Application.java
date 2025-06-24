@@ -258,25 +258,20 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	}
 
 	/**
-	 * Ends the application with the given status. This method first checks to see if the program can end. If the status is not {@value #EXIT_CODE_OK}, the
-	 * application will then exit immediately.
+	 * Requests to end the application with the given status. This method may perform checks to see if an application can truly end, such as checking for unsaved
+	 * files. In other words this method may be canceled and not complete exiting.
 	 * @apiNote This method normally will never return.
 	 * @apiNote To add to exit functionality, {@link #exit(int)} should be overridden rather than this method.
-	 * @apiNote This method explicitly does not accept {@value #EXIT_CODE_CONTINUE}, as continuing and ending contradictory concepts.
+	 * @apiNote This method explicitly does not accept {@value #EXIT_CODE_CONTINUE}, as continuing and ending are contradictory concepts.
 	 * @implSpec The default implementation calls {@link #exit(int)}.
 	 * @implNote This method should eventually delegate to {@link #exit(int)}.
 	 * @param status The exit status, which must not be negative.
-	 * @see #exit(int)
 	 * @throws IllegalArgumentException if the given status is negative.
+	 * @see #exit(int)
 	 */
 	public default void end(@Nonnegative final int status) {
 		checkArgumentNotNegative(status);
-		try {
-			exit(status); //perform the exit
-		} catch(final Throwable throwable) { //if there are any errors
-			reportError("Error exiting.", throwable); //report the error TODO i18n
-		}
-		System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
+		exit(status); //perform the exit
 	}
 
 	/**
@@ -294,13 +289,12 @@ public interface Application extends Runnable, Named<String>, Clogged {
 
 	/**
 	 * Exits the application immediately with the given status without checking to see if exit should be performed. This method calls {@link #cleanup()} and
-	 * delegates to {@link System#exit(int)}.
-	 * @apiNote This method normally will never return.
-	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred so that cleanup
-	 *          can occur.
+	 * delegates to {@link System#exit(int)}. This method will always exit and never return, even if errors occur during cleaning.
+	 * @apiNote This method will never return.
+	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred so that any end
+	 *          checks may be called.
 	 * @implSpec The default implementation calls {@link #cleanup()} and then delegates to {@link System#exit(int)}.
 	 * @param status The exit status.
-	 * @throws SecurityException if a security manager exists and its {@link SecurityManager#checkExit(int)} method doesn't allow exit with the specified status.
 	 * @see #cleanup()
 	 * @see System#exit(int)
 	 */
@@ -308,8 +302,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 		try {
 			cleanup();
 		} catch(final Throwable throwable) {
-			System.err.println("Error during application cleanup."); //advise of any errors; otherwise the system will exit and they will be lost
-			throwable.printStackTrace(System.err);
+			reportError("Error during application cleanup.", throwable); //report any errors; the application is exiting, so the errors cannot be propagated
 		} finally {
 			System.exit(status); //close the program with the given exit status		
 		}

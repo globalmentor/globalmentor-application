@@ -285,7 +285,11 @@ public abstract class AbstractApplication implements Application {
 	});
 
 	/**
-	 * Called when the application is beginning the shutdown process.
+	 * Called when the virtual machine is beginning the shutdown process.
+	 * @apiNote This method is called both during normal shutdown then the application has already ended normally, and when shutdown is forced such as a user
+	 *          pressing <code>Ctrl+C</code> in the terminal. As this method will be called at "a delicate time in the life cycle of a virtual machine" as per the
+	 *          documentation to {@link Runtime#addShutdownHook(Thread)}, any implementation should execute quickly, be thread-safe, and not rely on services or
+	 *          user interaction.
 	 * @implSpec The default version does nothing.
 	 */
 	protected void onShutdown() {
@@ -294,21 +298,14 @@ public abstract class AbstractApplication implements Application {
 	/**
 	 * {@inheritDoc}
 	 * @implSpec This method first calls {@link #canEnd()} to see if exit can occur.
-	 * @implSpec If exit is allowed to occur, this method will exit even if there was an error in calling {@link #exit(int)}.
 	 * @param status The exit status.
 	 * @see #canEnd()
-	 * @see #exit(int)
 	 */
 	@Override
 	public final void end(final int status) {
 		checkArgumentNotNegative(status);
 		if(canEnd()) { //if we can exit
-			try {
-				exit(status); //perform the exit
-			} catch(final Throwable throwable) { //if there are any errors
-				reportError("Error exiting.", throwable); //report the error TODO i18n
-			}
-			System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
+			Application.super.end(status); //exit in the default manner
 		}
 	}
 
