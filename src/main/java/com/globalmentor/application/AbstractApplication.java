@@ -118,6 +118,14 @@ public abstract class AbstractApplication implements Application {
 	private AtomicBoolean initialized = new AtomicBoolean(false);
 
 	/**
+	 * Indicates whether the application has been initialized.
+	 * @return <code>true</code> if the application has been initialized.
+	 */
+	protected boolean isInitialized() {
+		return initialized.get();
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * @apiNote Before overriding this method, see if one of the finer-grained initialization methods such as {@link #initializeApplication()} would be more
 	 *          appropriate.

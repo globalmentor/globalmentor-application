@@ -144,12 +144,10 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * Returns a <dfn>slug</dfn> for the application: a single computer-consumable token used to identify the application, such as as a path segment or in a URL
 	 * The slug should have no whitespace and ideally be in lowercase. It is recommended that a slug be in <code>kebab-case</code>. For example the "FooBar"
 	 * application might use a slug of <code>foo-bar</code>.
-	 * @apiNote Depending on the implementation, the final application slug may not be available be available until after initialization.
 	 * @implSpec The default implementation returns the <code>kebab-case</code> form of the application name. For example for an application named
 	 *           <code>MyApp</code>, the default implementation would return <code>my-app</code>.
 	 * @return A slug for the application.
 	 * @see <a href="https://en.wikipedia.org/wiki/Clean_URL#Slug">Slug (web_publishing)</a>
-	 * @throws IllegalStateException if application has not yet been initialized and the implementation requires initialization before retrieving the slug.
 	 * @see #getName()
 	 */
 	public default String getSlug() {

@@ -18,7 +18,6 @@ package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
 import static java.lang.String.format;
-import static java.util.function.Predicate.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
@@ -235,6 +234,20 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation returns the annotated name from the {@link Command} annotation on the concrete application class, such as
+	 *           <code>@Command(name = "myapp", …)</code>. The annotation is queried manually rather than accessing the command line command spec so that this
+	 *           value will be available even before application initialization. If the concrete application class has no {@link Command} annotation or does not
+	 *           provide a name, the default slug is returned.
+	 * @see Command
+	 */
+	@Override
+	public String getSlug() {
+		return Optional.ofNullable(getClass().getAnnotation(Command.class)).map(Command::name) //get the `@Command` annotation `name` value
+				.orElseGet(super::getSlug); //if there is no `@Command` annotation, or it doesn't provide a `name`, return the default slug
+	}
+
+	/**
 	 * The picocli command line instance for the currently executing application.
 	 * @implSpec This value is only available after initialization; otherwise <code>null</code>. Once set it is never unset.
 	 * @see #execute()
@@ -268,20 +281,6 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This implementation returns the name of the command-line command spec. Usually this is the name annotated on the application class itself, such
-	 *           as <code>@Command(name = "myapp", …)</code>.
-	 */
-	@Override
-	public String getSlug() {
-		//If the application is not yet initialized, the command line will not yet be available. This potentially could result in a changing slug once the
-		//application is initialized, but if we throw an exception if the command line is missing, there's no guarantee the command line would provide a
-		//name, and that approach would prevent returning to the default slug in that case. Better to risk a changing slug than to prevent a use case.
-		return Optional.ofNullable(commandLine).map(commandLine -> commandLine.getCommandSpec().name()).filter(not(CommandSpec.DEFAULT_COMMAND_NAME::equals))
-				.orElseGet(super::getSlug); //if there is no command line, or the command spec name has not been set, delegate to the default
 	}
 
 	/**
