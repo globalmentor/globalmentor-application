@@ -17,16 +17,12 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
-import static com.globalmentor.lex.CompoundTokenization.*;
 import static java.lang.String.format;
 import static java.util.Objects.*;
 
-import java.io.*;
-import java.nio.file.NoSuchFileException;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.prefs.Preferences;
 
 import javax.annotation.*;
 
@@ -67,7 +63,7 @@ public abstract class AbstractApplication implements Application {
 	private Authenticable authenticator = null;
 
 	@Override
-	public Optional<Authenticable> getAuthenticator() {
+	public Optional<Authenticable> findAuthenticator() {
 		return Optional.ofNullable(authenticator);
 	}
 
@@ -90,16 +86,11 @@ public abstract class AbstractApplication implements Application {
 		return args;
 	}
 
-	@Override
-	public Preferences getPreferences() throws SecurityException {
-		return Preferences.userNodeForPackage(getClass()); //return the user preferences node for whatever class extends this one 
-	}
-
 	/** The expiration date of the application, or <code>null</code> if there is no expiration. */
 	private LocalDate expirationDate = null;
 
 	@Override
-	public Optional<LocalDate> getExpirationDate() {
+	public Optional<LocalDate> findExpirationDate() {
 		return Optional.ofNullable(expirationDate);
 	}
 
@@ -163,22 +154,6 @@ public abstract class AbstractApplication implements Application {
 	 * @see #cleanupApplication()
 	 */
 	protected void initializeApplication() {
-	}
-
-	/**
-	 * Returns a <dfn>slug</dfn> for the application: a single computer-consumable token used to identify the application, such as as a path segment or in a URL
-	 * The slug should have no whitespace and ideally be in lowercase. It is recommended that a slug be in <code>kebab-case</code>. For example the "FooBar"
-	 * application might use a slug of <code>foo-bar</code>.
-	 * @apiNote Depending on the implementation, the final application slug may not be available be available until after initialization; see
-	 *          {@link #initializeApplication()}.
-	 * @implSpec The default implementation returns the <code>kebab-case</code> form of the simple class name of the application. For example for an application
-	 *           class named <code>MyApp</code>, this implementation would return <code>my-app</code>.
-	 * @return A slug for the application.
-	 * @see <a href="https://en.wikipedia.org/wiki/Clean_URL#Slug">Slug (web_publishing)</a>
-	 * @throws IllegalStateException if application has not yet been initialized and the implementation requires initialization before retrieving the slug.
-	 */
-	protected String getSlug() {
-		return CAMEL_CASE.to(KEBAB_CASE, getClass().getSimpleName());
 	}
 
 	/**
@@ -249,7 +224,7 @@ public abstract class AbstractApplication implements Application {
 	 * @return <code>true</code> if the checks succeeded.
 	 */
 	protected boolean canStart() {
-		final boolean isExpired = getExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
+		final boolean isExpired = findExpirationDate().map(expirationDate -> !LocalDate.now().isAfter(expirationDate)).orElse(false);
 		if(isExpired) {
 			reportError("This version of " + getName() + " has expired."); //TODO i18n; improve error handling (should probably report error elsewhere)
 			return false;
@@ -324,6 +299,7 @@ public abstract class AbstractApplication implements Application {
 	 * @see #canEnd()
 	 * @see #exit(int)
 	 */
+	@Override
 	public final void end(final int status) {
 		checkArgumentNotNegative(status);
 		if(canEnd()) { //if we can exit
@@ -371,53 +347,6 @@ public abstract class AbstractApplication implements Application {
 				System.exit(status); //close the program with the given exit status		
 			}
 		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
-	 */
-	@Override
-	public void reportError(final Throwable throwable) {
-		reportError(toErrorMessage(throwable), throwable);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This implementation calls {@link #reportError(String)} and then prints a stack trace to {@link System#err}.
-	 * @see Throwable#printStackTrace(PrintStream)
-	 */
-	@Override
-	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
-		reportError(message);
-		throwable.printStackTrace(System.err);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This implementation writes the message to {@link System#err}.
-	 */
-	@Override
-	public void reportError(final String message) {
-		System.err.println(message); //display the error in the error output
-	}
-
-	/**
-	 * Constructs a user-presentable error message based on an exception.
-	 * @implSpec This version returns constructed messages for exceptions known not to contain useful information. In most cases it returns
-	 *           {@link Throwable#getMessage()}.
-	 * @param throwable The condition that caused the error.
-	 * @return The error message.
-	 * @see Throwable#getMessage()
-	 */
-	protected @Nonnull String toErrorMessage(final Throwable throwable) {
-		if(throwable instanceof FileNotFoundException) {
-			return "File or directory not found: " + throwable.getMessage(); //TODO i18n
-		} else if(throwable instanceof NoSuchFileException) {
-			return "No such file or directory: " + throwable.getMessage(); //TODO i18n
-		}
-		final String message = throwable.getMessage();
-		return message != null ? message : throwable.getClass().getName(); //if there is no message, return the simple class name
 	}
 
 }

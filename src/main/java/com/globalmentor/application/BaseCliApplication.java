@@ -276,7 +276,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 *           as <code>@Command(name = "myapp", …)</code>.
 	 */
 	@Override
-	protected String getSlug() {
+	public String getSlug() {
 		//If the application is not yet initialized, the command line will not yet be available. This potentially could result in a changing slug once the
 		//application is initialized, but if we throw an exception if the command line is missing, there's no guarantee the command line would provide a
 		//name, and that approach would prevent returning to the default slug in that case. Better to risk a changing slug than to prevent a use case.
@@ -347,15 +347,6 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		final Logger logger = getLogger();
 		logger.info("\n{}{}{}", ansi().bold().fg(Ansi.Color.GREEN), figletRenderer.renderText(appName), ansi().reset());
 		logger.info("{} {}\n", appName, appVersion);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
-	 */
-	@Override
-	public void reportError(final Throwable throwable) {
-		reportError(toErrorMessage(throwable), throwable);
 	}
 
 	/**

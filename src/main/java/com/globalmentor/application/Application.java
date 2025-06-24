@@ -16,7 +16,11 @@
 
 package com.globalmentor.application;
 
-import java.io.IOException;
+import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.lex.CompoundTokenization.*;
+
+import java.io.*;
+import java.nio.file.NoSuchFileException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
@@ -105,15 +109,30 @@ public interface Application extends Runnable, Named<String>, Clogged {
 
 	/**
 	 * Retrieves the application authenticator.
-	 * @return The authenticator object used to retrieve client authentication.
+	 * @implSpec The default implementation returns empty.
+	 * @return The authenticator object, if any, used to retrieve client authentication.
 	 */
-	public Optional<Authenticable> getAuthenticator();
+	public default Optional<Authenticable> findAuthenticator() {
+		return Optional.empty();
+	}
 
 	/**
 	 * Retrieves the application arguments.
+	 * @implSpec The default implementation returns no arguments.
 	 * @return The command-line arguments of the application.
 	 */
-	public String[] getArgs();
+	public default String[] getArgs() {
+		return NO_ARGUMENTS;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec The default implementation returns the simple class name of the concrete application class.
+	 */
+	@Override
+	public default String getName() {
+		return getClass().getSimpleName();
+	}
 
 	/**
 	 * Returns the application version.
@@ -122,37 +141,64 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	public String getVersion();
 
 	/**
+	 * Returns a <dfn>slug</dfn> for the application: a single computer-consumable token used to identify the application, such as as a path segment or in a URL
+	 * The slug should have no whitespace and ideally be in lowercase. It is recommended that a slug be in <code>kebab-case</code>. For example the "FooBar"
+	 * application might use a slug of <code>foo-bar</code>.
+	 * @apiNote Depending on the implementation, the final application slug may not be available be available until after initialization.
+	 * @implSpec The default implementation returns the <code>kebab-case</code> form of the application name. For example for an application named
+	 *           <code>MyApp</code>, the default implementation would return <code>my-app</code>.
+	 * @return A slug for the application.
+	 * @see <a href="https://en.wikipedia.org/wiki/Clean_URL#Slug">Slug (web_publishing)</a>
+	 * @throws IllegalStateException if application has not yet been initialized and the implementation requires initialization before retrieving the slug.
+	 * @see #getName()
+	 */
+	public default String getSlug() {
+		return CAMEL_CASE.to(KEBAB_CASE, getName());
+	}
+
+	/**
+	 * Returns the application user preferences.
+	 * @implSpec The default implementation returns the user preferences node for the concrete subclass.
+	 * @return The default user preferences for this application.
+	 */
+	public default Preferences getPreferences() {
+		return Preferences.userNodeForPackage(getClass());
+	}
+
+	/**
 	 * Returns whether debug mode is enabled.
+	 * @implSpec The default implementation returns <code>false</code>.
 	 * @apiNote Debug mode enables debug level logging and may also enable other debug functionality.
 	 * @apiNote Thus <dfn>debug mode</dfn> refers to both a mode setting and a log level. Other settings may influence the log level while leaving debug mode on.
 	 * @return The state of debug mode.
 	 */
-	public boolean isDebug();
-
-	/**
-	 * Returns the application user preferences.
-	 * @return The default user preferences for this application.
-	 * @throws SecurityException if a security manager is present and it denies <code>RuntimePermission("preferences")</code>.
-	 */
-	public Preferences getPreferences() throws SecurityException;
+	public default boolean isDebug() {
+		return false;
+	}
 
 	/**
 	 * Retrieves the application expiration date.
+	 * @implSpec The default implementation returns empty.
 	 * @return The expiration date of the application, if there is one.
 	 */
-	public Optional<LocalDate> getExpirationDate();
+	public default Optional<LocalDate> findExpirationDate() {
+		return Optional.empty();
+	}
 
 	/**
 	 * Initializes the application. This method is called after construction but before application execution.
+	 * @implSpec The default implementation does nothing.
 	 * @throws IllegalStateException if the application has already been initialized.
 	 * @throws Exception if anything goes wrong.
 	 * @see #cleanup()
 	 */
-	public void initialize() throws Exception;
+	public default void initialize() throws Exception {
+	}
 
 	/**
 	 * Starts the application if it can be started.
-	 * @implNote This method should eventually delegate to {@link #run()}.
+	 * @implSpec The default implementation calls {@link #run()} and returns {@link #EXIT_CODE_OK}.
+	 * @implNote Any implementation of this method should eventually delegate to {@link #run()}.
 	 * @return The application status:
 	 *         <dl>
 	 *         <dt>{@value #EXIT_CODE_OK}</dt>
@@ -163,7 +209,10 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 *         <dd>The application should not exit but continue running, such as for a GUI or daemon application.</dd>
 	 *         </dl>
 	 */
-	public int start();
+	public default int start() {
+		run();
+		return EXIT_CODE_OK;
+	}
 
 	/**
 	 * Starts an application. If this method returns, the program is still running.
@@ -214,12 +263,21 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @apiNote This method normally will never return.
 	 * @apiNote To add to exit functionality, {@link #exit(int)} should be overridden rather than this method.
 	 * @apiNote This method explicitly does not accept {@value #EXIT_CODE_CONTINUE}, as continuing and ending contradictory concepts.
+	 * @implSpec The default implementation calls {@link #exit(int)}.
 	 * @implNote This method should eventually delegate to {@link #exit(int)}.
 	 * @param status The exit status, which must not be negative.
 	 * @see #exit(int)
 	 * @throws IllegalArgumentException if the given status is negative.
 	 */
-	public void end(@Nonnegative final int status);
+	public default void end(@Nonnegative final int status) {
+		checkArgumentNotNegative(status);
+		try {
+			exit(status); //perform the exit
+		} catch(final Throwable throwable) { //if there are any errors
+			reportError("Error exiting.", throwable); //report the error TODO i18n
+		}
+		System.exit(-1); //provide a fail-safe way to exit, indicating an error occurred		
+	}
 
 	/**
 	 * Performs cleanup necessary for the application before final shutdown. Under normal circumstances this method is called immediately before final system
@@ -240,30 +298,69 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @apiNote This method normally will never return.
 	 * @apiNote Normally this method is never called directly by the application. To end the application, calling {@link #end(int)} is preferred so that cleanup
 	 *          can occur.
+	 * @implSpec The default implementation calls {@link #cleanup()} and then delegates to {@link System#exit(int)}.
 	 * @param status The exit status.
 	 * @throws SecurityException if a security manager exists and its {@link SecurityManager#checkExit(int)} method doesn't allow exit with the specified status.
 	 * @see #cleanup()
 	 * @see System#exit(int)
 	 */
-	public void exit(final int status);
+	public default void exit(final int status) {
+		try {
+			cleanup();
+		} catch(final Throwable throwable) {
+			System.err.println("Error during application cleanup."); //advise of any errors; otherwise the system will exit and they will be lost
+			throwable.printStackTrace(System.err);
+		} finally {
+			System.exit(status); //close the program with the given exit status		
+		}
+	}
 
 	/**
 	 * Reports an error condition to the user. A message will be added as appropriate.
+	 * @implSpec The default version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
 	 * @param throwable The condition that caused the error.
 	 */
-	public void reportError(@Nonnull final Throwable throwable);
+	public default void reportError(@Nonnull final Throwable throwable) {
+		reportError(toErrorMessage(throwable), throwable);
+	}
 
 	/**
 	 * Reports an error message to the user related to an exception.
+	 * @implSpec The default implementation calls {@link #reportError(String)} and then prints a stack trace to {@link System#err}.
 	 * @param message The message to display.
 	 * @param throwable The condition that caused the error.
+	 * @see Throwable#printStackTrace(PrintStream)
 	 */
-	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable);
+	public default void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+		reportError(message);
+		throwable.printStackTrace(System.err);
+	}
 
 	/**
 	 * Reports the given error message to the user
+	 * @implSpec The default implementation writes the message to {@link System#err}.
 	 * @param message The error to display.
 	 */
-	public void reportError(@Nonnull final String message);
+	public default void reportError(@Nonnull final String message) {
+		System.err.println(message); //display the error in the error output
+	}
+
+	/**
+	 * Constructs a user-presentable error message based on an exception.
+	 * @implSpec The default version returns constructed messages for exceptions known not to contain useful information. In most cases it returns
+	 *           {@link Throwable#getMessage()}.
+	 * @param throwable The condition that caused the error.
+	 * @return The error message.
+	 * @see Throwable#getMessage()
+	 */
+	public default @Nonnull String toErrorMessage(final Throwable throwable) {
+		if(throwable instanceof FileNotFoundException) {
+			return "File or directory not found: " + throwable.getMessage(); //TODO i18n
+		} else if(throwable instanceof NoSuchFileException) {
+			return "No such file or directory: " + throwable.getMessage(); //TODO i18n
+		}
+		final String message = throwable.getMessage();
+		return message != null ? message : throwable.getClass().getName(); //if there is no message, return the simple class name
+	}
 
 }
