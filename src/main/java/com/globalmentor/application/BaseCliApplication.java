@@ -18,6 +18,7 @@ package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
 import static java.lang.String.format;
+import static java.util.function.Predicate.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
@@ -267,6 +268,20 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation returns the name of the command-line command spec. Usually this is the name annotated on the application class itself, such
+	 *           as <code>@Command(name = "myapp", …)</code>.
+	 */
+	@Override
+	protected String getSlug() {
+		//If the application is not yet initialized, the command line will not yet be available. This potentially could result in a changing slug once the
+		//application is initialized, but if we throw an exception if the command line is missing, there's no guarantee the command line would provide a
+		//name, and that approach would prevent returning to the default slug in that case. Better to risk a changing slug than to prevent a use case.
+		return Optional.ofNullable(commandLine).map(commandLine -> commandLine.getCommandSpec().name()).filter(not(CommandSpec.DEFAULT_COMMAND_NAME::equals))
+				.orElseGet(super::getSlug); //if there is no command line, or the command spec name has not been set, delegate to the default
 	}
 
 	/**
