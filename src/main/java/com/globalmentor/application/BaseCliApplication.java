@@ -16,11 +16,16 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
+import static io.confound.Confound.*;
+import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
+import static java.nio.file.Files.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 
@@ -31,7 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import com.github.dtmo.jfiglet.*;
+import com.globalmentor.java.OperatingSystem;
 import com.globalmentor.time.Durations;
+import com.globalmentor.util.Optionals;
 
 import io.clogr.*;
 import io.confound.config.*;
@@ -281,6 +288,42 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then loads any local configuration
+	 *           overrides. The local configuration files are discovered in decreasing order of priority in the current working directory, each parent directory
+	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigHomeDirectory()}; checking at each directory for a
+	 *           configuration file with the base name of {@link #getSlug()} as a dotfile. For example, for an application with a slug <code>my-app</code>, a
+	 *           configuration file <code>.my-app.properties</code> in the current working directory would override <code>../.my-app.properties</code> and finally
+	 *           <code>~/.my-app.properties</code>. The implementation then adds a configurations with higher priority for environment variables and system
+	 *           properties.
+	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @return The configuration information, if found and loaded successfully.
+	 * @throws IOException if there was an I/O error loading the configuration.
+	 * @see #loadFoundGlobalConfiguration()
+	 * @see OperatingSystem#getWorkingDirectory()
+	 * @see #getGlobalConfigHomeDirectory()
+	 */
+	@Override
+	protected Configuration loadConfiguration() throws IOException {
+		final Optional<Configuration> foundGlobalConfig = loadFoundGlobalConfiguration();
+
+		final String localConfigBaseFilename = DOTFILE_PREFIX + getSlug(); //e.g. `.my-app`
+		Optional<Configuration> foundLocalConfig;
+
+		//local config in global config home
+		final Path globalConfigHomeDirectory = getGlobalConfigHomeDirectory();
+		foundLocalConfig = isDirectory(globalConfigHomeDirectory) //TODO remove check when CONFOUND-35 is fixed
+				? loadConfigurationForBaseFilename(globalConfigHomeDirectory, localConfigBaseFilename)
+				: Optional.empty();
+
+		final Optional<Configuration> foundLocalConfigWithFallbackToGlobalConfig = Optionals.or(
+				foundLocalConfig.map(localConfig -> Configuration.withFallback(localConfig, foundGlobalConfig)), //if there is a local config chain, have if fall back to the global config
+				foundGlobalConfig); //otherwise just use the global config TODO improve fallback with CONFOUND-36
+
+		return getSystemConfiguration(foundLocalConfigWithFallbackToGlobalConfig.orElse(null)); //override the local config with environment variables and system properties 
 	}
 
 	/**

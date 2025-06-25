@@ -52,7 +52,6 @@ public class BaseCliApplicationTest {
 	@BeforeAll
 	static void installDummyLogger() {
 		Clogr.setDefaultLoggingConcern(DUMMY_LOGGING_CONCERN);
-
 	}
 
 	/** @see Application#getName() */

@@ -172,7 +172,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the {@link #getGlobalConfigHomeDirectory()},
 	 *           using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name. Typically the config base directory is the user home
 	 *           directory, so that the path indicates something like <code>~/.my-app</code>.
-	 * @return The application-specific config directory.
+	 * @return The application-specific global config directory.
 	 * @see #getGlobalConfigHomeDirectory()
 	 */
 	public default Path getGlobalConfigDirectory() {

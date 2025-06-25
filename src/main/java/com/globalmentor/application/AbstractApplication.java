@@ -198,8 +198,9 @@ public abstract class AbstractApplication implements Application {
 	 */
 	protected Optional<Configuration> loadFoundGlobalConfiguration() throws IOException {
 		final Path globalConfigDirectory = getGlobalConfigDirectory();
-		if(isDirectory(globalConfigDirectory)) { //TODO remove when CONFOUND-35 is implemented
-			return loadConfigurationForBaseFilename(getGlobalConfigDirectory(), getSlug());
+		if(isDirectory(globalConfigDirectory)) { //TODO remove check when CONFOUND-35 is fixed
+			final String globalConfigBaseFilename = getSlug(); //e.g. `my-app`
+			return loadConfigurationForBaseFilename(globalConfigDirectory, globalConfigBaseFilename);
 		}
 		return Optional.empty();
 	}

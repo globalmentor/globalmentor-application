@@ -34,7 +34,7 @@ import org.junit.jupiter.api.io.*;
 public class AbstractApplicationIT {
 
 	@TempDir
-	Path configBaseDirectory;
+	Path globalConfigHomeDirectory;
 
 	@Test
 	void verifyInitializesIfNoGlobalConfigDirectoryExists() throws Exception {
@@ -45,7 +45,7 @@ public class AbstractApplicationIT {
 
 	@Test
 	void verifyInitializesIfNoGlobalConfigFileExists() throws Exception {
-		createDirectory(configBaseDirectory.resolve(".test-app"));
+		createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
 		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
@@ -53,7 +53,7 @@ public class AbstractApplicationIT {
 
 	@Test
 	void verifyLoadsGlobalConfiguration() throws Exception {
-		final Path configDirectory = createDirectory(configBaseDirectory.resolve(".test-app"));
+		final Path configDirectory = createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
 		writeString(configDirectory.resolve("test-app.properties"), "foo=bar");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
@@ -61,8 +61,8 @@ public class AbstractApplicationIT {
 	}
 
 	@Test
-	void verifyEnvironmentVariableTakesPrecedentOverGlobalConfiguration() throws Exception {
-		final Path configDirectory = createDirectory(configBaseDirectory.resolve(".test-app"));
+	void verifySystemPropertyTakesPrecedenceOverGlobalConfiguration() throws Exception {
+		final Path configDirectory = createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
 		write(configDirectory.resolve("test-app.properties"), List.of("foo=bar", "x=y"));
 		System.setProperty("x", "z");
 		final TestApp testApp = new TestApp();
@@ -83,7 +83,7 @@ public class AbstractApplicationIT {
 
 		@Override
 		public Path getGlobalConfigHomeDirectory() {
-			return configBaseDirectory;
+			return globalConfigHomeDirectory;
 		}
 
 	}
