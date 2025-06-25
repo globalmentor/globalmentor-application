@@ -16,6 +16,7 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.OperatingSystem.*;
 import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 
@@ -37,6 +38,12 @@ public class ApplicationTest {
 	@Test
 	void tesDefaultSlug() {
 		assertThat(new TestApp().getSlug(), is("test-app"));
+	}
+
+	/** @see Application#getConfigDirectory() */
+	@Test
+	void tesDefaultConfigDirectory() {
+		assertThat(new TestApp().getConfigDirectory(), is(getUserHomeDirectory().resolve(".test-app")));
 	}
 
 	static class TestApp implements Application {

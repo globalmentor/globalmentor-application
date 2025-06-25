@@ -17,9 +17,13 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
+import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
+import static java.nio.file.Files.*;
 import static java.util.Objects.*;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -115,6 +119,16 @@ public abstract class AbstractApplication implements Application {
 		this.args = requireNonNull(args);
 	}
 
+	private volatile Configuration config = EmptyConfiguration.INSTANCE; //updated during application initialization
+
+	/**
+	 * Returns the application configuration information. If the application is not yet initialized, the configuration may be empty.
+	 * @return The application configuration information.
+	 */
+	public Configuration getConfig() {
+		return config;
+	}
+
 	private AtomicBoolean initialized = new AtomicBoolean(false);
 
 	/**
@@ -150,18 +164,43 @@ public abstract class AbstractApplication implements Application {
 	 * Initializes things related to the system on which the application will be running.
 	 * @implSpec This version sets up the shutdown hook.
 	 * @implSpec Any overridden version must first call this version.
+	 * @throws Exception if anything goes wrong.
 	 * @see Runtime#addShutdownHook(Thread)
 	 * @see #cleanupSystem()
 	 */
-	protected void initializeSystem() {
+	protected void initializeSystem() throws Exception {
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
 	}
 
 	/**
 	 * Initializes the application itself. {@link #initializeSystem()} will already have been called.
+	 * @implSpec This implementation loads the application configuration using {@link #loadConfiguration()}.
+	 * @throws Exception if anything goes wrong.
 	 * @see #cleanupApplication()
 	 */
-	protected void initializeApplication() {
+	protected void initializeApplication() throws Exception {
+		config = loadConfiguration().orElse(config); //keep the existing (empty) config if no config file is present  
+	}
+
+	/**
+	 * Discovers and loads configuration information for the application.
+	 * @implSpec This implementation loads the application configuration from {@link #getConfigDirectory()}, if that directory exists and contains an appropriate
+	 *           config file. The configuration file is expected to have a base name of the application slug from {@link #getSlug()}, with an appropriate
+	 *           extension corresponding to a supported configuration file. For example a configuration file for an application with a slug <code>my-app</code>
+	 *           might be stored in <code>~/.my-app/my-app.properties</code>.
+	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @return The configuration information, if found and loaded successfully.
+	 * @throws IOException if there was an I/O error loading the configuration.
+	 * @see #getConfigDirectory()
+	 * @see #getSlug()
+	 * @see #getConfig()
+	 */
+	protected Optional<Configuration> loadConfiguration() throws IOException {
+		final Path configDirectory = getConfigDirectory();
+		if(isDirectory(configDirectory)) {
+			return loadConfigurationForBaseFilename(getConfigDirectory(), getSlug());
+		}
+		return Optional.empty();
 	}
 
 	/**

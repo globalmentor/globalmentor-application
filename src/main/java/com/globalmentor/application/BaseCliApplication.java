@@ -259,7 +259,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * {@inheritDoc}
 	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
 	 */
-	protected void initializeSystem() {
+	protected void initializeSystem() throws Exception {
 		super.initializeSystem();
 		AnsiConsole.systemInstall();
 	}
@@ -269,7 +269,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec This implementation configures picocli and creates the parsed command line.
 	 */
 	@Override
-	public void initializeApplication() {
+	public void initializeApplication() throws Exception {
 		super.initializeApplication();
 		final IExecutionExceptionHandler errorHandler = (exception, commandLine, parseResult) -> {
 			reportError(exception);
