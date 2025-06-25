@@ -158,24 +158,25 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	}
 
 	/**
-	 * Returns the directory used as the parent directory for global configuration for the configuration subdirectory.
+	 * Returns the directory used as the parent directory for the global configuration subdirectory. The directory may not exist.
 	 * @implSpec The default implementation returns the user home directory.
 	 * @return The base directory for configuration and configuration subdirectory.
 	 */
-	public default Path getConfigBaseDirectory() {
+	public default Path getGlobalConfigHomeDirectory() {
 		return getUserHomeDirectory();
 	}
 
 	/**
-	 * Returns the directory used to find configuration information for the application.
-	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the config base directory, using
-	 *           {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name. Typically the config base directory is the user home
+	 * Returns the directory used to find global configuration information for the application. The directory may not exist.
+	 * @apiNote This is analogous to the global configuration location of <a href="https://git-scm.com/docs/git-config">git-config</a>.
+	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the {@link #getGlobalConfigHomeDirectory()},
+	 *           using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name. Typically the config base directory is the user home
 	 *           directory, so that the path indicates something like <code>~/.my-app</code>.
 	 * @return The application-specific config directory.
-	 * @see #getConfigBaseDirectory()
+	 * @see #getGlobalConfigHomeDirectory()
 	 */
-	public default Path getConfigDirectory() {
-		return getConfigBaseDirectory().resolve(DOTFILE_PREFIX + getSlug());
+	public default Path getGlobalConfigDirectory() {
+		return getGlobalConfigHomeDirectory().resolve(DOTFILE_PREFIX + getSlug());
 	}
 
 	/**

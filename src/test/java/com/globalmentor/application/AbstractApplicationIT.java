@@ -22,7 +22,7 @@ import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 
 import java.nio.file.Path;
-import java.util.Optional;
+import java.util.*;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.*;
@@ -37,14 +37,14 @@ public class AbstractApplicationIT {
 	Path configBaseDirectory;
 
 	@Test
-	void verifyInitializesIfNoConfigDirectoryExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigDirectoryExists() throws Exception {
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
 		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
-	void verifyInitializesIfNoConfigFileExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigFileExists() throws Exception {
 		createDirectory(configBaseDirectory.resolve(".test-app"));
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
@@ -52,12 +52,23 @@ public class AbstractApplicationIT {
 	}
 
 	@Test
-	void verifyLoadsConfiguration() throws Exception {
+	void verifyLoadsGlobalConfiguration() throws Exception {
 		final Path configDirectory = createDirectory(configBaseDirectory.resolve(".test-app"));
 		writeString(configDirectory.resolve("test-app.properties"), "foo=bar");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
 		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
+	}
+
+	@Test
+	void verifyEnvironmentVariableTakesPrecedentOverGlobalConfiguration() throws Exception {
+		final Path configDirectory = createDirectory(configBaseDirectory.resolve(".test-app"));
+		write(configDirectory.resolve("test-app.properties"), List.of("foo=bar", "x=y"));
+		System.setProperty("x", "z");
+		final TestApp testApp = new TestApp();
+		testApp.initialize();
+		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
+		assertThat(testApp.getConfig().findString("x"), isPresentAnd(is("z")));
 	}
 
 	class TestApp extends AbstractApplication {
@@ -71,7 +82,7 @@ public class AbstractApplicationIT {
 		}
 
 		@Override
-		public Path getConfigBaseDirectory() {
+		public Path getGlobalConfigHomeDirectory() {
 			return configBaseDirectory;
 		}
 

@@ -40,10 +40,10 @@ public class ApplicationTest {
 		assertThat(new TestApp().getSlug(), is("test-app"));
 	}
 
-	/** @see Application#getConfigDirectory() */
+	/** @see Application#getGlobalConfigDirectory() */
 	@Test
 	void tesDefaultConfigDirectory() {
-		assertThat(new TestApp().getConfigDirectory(), is(getUserHomeDirectory().resolve(".test-app")));
+		assertThat(new TestApp().getGlobalConfigDirectory(), is(getUserHomeDirectory().resolve(".test-app")));
 	}
 
 	static class TestApp implements Application {

@@ -17,6 +17,7 @@
 package com.globalmentor.application;
 
 import static com.globalmentor.java.Conditions.*;
+import static io.confound.Confound.*;
 import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
 import static java.nio.file.Files.*;
@@ -179,28 +180,40 @@ public abstract class AbstractApplication implements Application {
 	 * @see #cleanupApplication()
 	 */
 	protected void initializeApplication() throws Exception {
-		config = loadConfiguration().orElse(config); //keep the existing (empty) config if no config file is present  
+		config = loadConfiguration();
+	}
+
+	/**
+	 * Loads the global configuration information for the application.
+	 * @implSpec This implementation loads the application configuration from {@link #getGlobalConfigDirectory()}, if that directory exists and contains an
+	 *           appropriate config file. The configuration file is expected to have a base name of the application slug from {@link #getSlug()}, with an
+	 *           appropriate extension corresponding to a supported configuration file. For example a configuration file for an application with a slug
+	 *           <code>my-app</code> might be stored in <code>~/.my-app/my-app.properties</code>.
+	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @return The global configuration information, if found and loaded successfully.
+	 * @throws IOException if there was an I/O error loading the configuration.
+	 * @see #getGlobalConfigDirectory()
+	 * @see #getSlug()
+	 * @see #getConfig()
+	 */
+	protected Optional<Configuration> loadFoundGlobalConfiguration() throws IOException {
+		final Path globalConfigDirectory = getGlobalConfigDirectory();
+		if(isDirectory(globalConfigDirectory)) { //TODO remove when CONFOUND-35 is implemented
+			return loadConfigurationForBaseFilename(getGlobalConfigDirectory(), getSlug());
+		}
+		return Optional.empty();
 	}
 
 	/**
 	 * Discovers and loads configuration information for the application.
-	 * @implSpec This implementation loads the application configuration from {@link #getConfigDirectory()}, if that directory exists and contains an appropriate
-	 *           config file. The configuration file is expected to have a base name of the application slug from {@link #getSlug()}, with an appropriate
-	 *           extension corresponding to a supported configuration file. For example a configuration file for an application with a slug <code>my-app</code>
-	 *           might be stored in <code>~/.my-app/my-app.properties</code>.
-	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then adds a configurations with
+	 *           higher priority for environment variables and system properties.
 	 * @return The configuration information, if found and loaded successfully.
 	 * @throws IOException if there was an I/O error loading the configuration.
-	 * @see #getConfigDirectory()
-	 * @see #getSlug()
-	 * @see #getConfig()
+	 * @see #loadFoundGlobalConfiguration()
 	 */
-	protected Optional<Configuration> loadConfiguration() throws IOException {
-		final Path configDirectory = getConfigDirectory();
-		if(isDirectory(configDirectory)) {
-			return loadConfigurationForBaseFilename(getConfigDirectory(), getSlug());
-		}
-		return Optional.empty();
+	protected Configuration loadConfiguration() throws IOException {
+		return getSystemConfiguration(loadFoundGlobalConfiguration().orElse(null)); //return the loaded global configuration, with environment variables and system properties overriding 
 	}
 
 	/**
