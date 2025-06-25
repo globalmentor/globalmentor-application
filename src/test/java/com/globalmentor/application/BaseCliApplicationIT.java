@@ -66,18 +66,18 @@ public class BaseCliApplicationIT {
 	Path globalConfigHomeDirectory;
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigDirectoryExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigurationDirectoryExists() throws Exception {
 		final TestCliApp testApp = new TestCliApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
+		assertThat(testApp.getConfiguration().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigFileExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigurationFileExists() throws Exception {
 		createDirectory(globalConfigHomeDirectory.resolve(".test-cli"));
 		final TestCliApp testApp = new TestCliApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
+		assertThat(testApp.getConfiguration().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
@@ -86,7 +86,7 @@ public class BaseCliApplicationIT {
 		writeString(configDirectory.resolve("test-cli.properties"), "foo=bar");
 		final TestCliApp testApp = new TestCliApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
+		assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
 	}
 
 	@Test
@@ -97,31 +97,31 @@ public class BaseCliApplicationIT {
 			System.setProperty("x", "z");
 			final TestCliApp testApp = new TestCliApp();
 			testApp.initialize();
-			assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
-			assertThat(testApp.getConfig().findString("x"), isPresentAnd(is("z")));
+			assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
+			assertThat(testApp.getConfiguration().findString("x"), isPresentAnd(is("z")));
 		} finally {
 			System.clearProperty("x");
 		}
 	}
 
 	@Test
-	void verifyLoadsLocalConfigurationInGlobalConfigHome() throws Exception {
+	void verifyLoadsLocalConfigurationInGlobalConfigurationHome() throws Exception {
 		writeString(globalConfigHomeDirectory.resolve(".test-cli.properties"), "foo=bar");
 		final TestCliApp testApp = new TestCliApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
+		assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
 	}
 
 	@Test
-	void verifyLocalConfigurationInGlobalConfigHomeTakesPrecedenceOverGlobalConfiguration() throws Exception {
+	void verifyLocalConfigurationInGlobalConfigurationHomeTakesPrecedenceOverGlobalConfiguration() throws Exception {
 		final Path configDirectory = createDirectory(globalConfigHomeDirectory.resolve(".test-cli"));
 		write(configDirectory.resolve("test-cli.properties"), List.of("globalsetting=abc", "foobar=global wins"));
 		write(globalConfigHomeDirectory.resolve(".test-cli.properties"), List.of("localhomesetting=def", "foobar=localhome wins"));
 		final TestCliApp testApp = new TestCliApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findString("globalsetting"), isPresentAnd(is("abc")));
-		assertThat(testApp.getConfig().findString("localhomesetting"), isPresentAnd(is("def")));
-		assertThat(testApp.getConfig().findString("foobar"), isPresentAnd(is("localhome wins")));
+		assertThat(testApp.getConfiguration().findString("globalsetting"), isPresentAnd(is("abc")));
+		assertThat(testApp.getConfiguration().findString("localhomesetting"), isPresentAnd(is("def")));
+		assertThat(testApp.getConfiguration().findString("foobar"), isPresentAnd(is("localhome wins")));
 	}
 
 	@Test
@@ -135,10 +135,10 @@ public class BaseCliApplicationIT {
 
 			final TestCliApp testApp = new TestCliApp();
 			testApp.initialize();
-			assertThat(testApp.getConfig().findString("globalsetting"), isPresentAnd(is("abc")));
-			assertThat(testApp.getConfig().findString("localhomesetting"), isPresentAnd(is("def")));
-			assertThat(testApp.getConfig().findString("systemsetting"), isPresentAnd(is("ghi")));
-			assertThat(testApp.getConfig().findString("foobar"), isPresentAnd(is("system wins")));
+			assertThat(testApp.getConfiguration().findString("globalsetting"), isPresentAnd(is("abc")));
+			assertThat(testApp.getConfiguration().findString("localhomesetting"), isPresentAnd(is("def")));
+			assertThat(testApp.getConfiguration().findString("systemsetting"), isPresentAnd(is("ghi")));
+			assertThat(testApp.getConfiguration().findString("foobar"), isPresentAnd(is("system wins")));
 		} finally {
 			System.clearProperty("systemsetting");
 			System.clearProperty("foobar");
@@ -162,7 +162,7 @@ public class BaseCliApplicationIT {
 		}
 
 		@Override
-		public Path getGlobalConfigHomeDirectory() {
+		public Path getGlobalConfigurationHomeDirectory() {
 			return globalConfigHomeDirectory;
 		}
 

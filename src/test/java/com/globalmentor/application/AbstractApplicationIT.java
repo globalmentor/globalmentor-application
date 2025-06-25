@@ -37,18 +37,18 @@ public class AbstractApplicationIT {
 	Path globalConfigHomeDirectory;
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigDirectoryExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigurationDirectoryExists() throws Exception {
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
+		assertThat(testApp.getConfiguration().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigFileExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigurationFileExists() throws Exception {
 		createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findUri("foo"), is(Optional.empty()));
+		assertThat(testApp.getConfiguration().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
@@ -57,7 +57,7 @@ public class AbstractApplicationIT {
 		writeString(configDirectory.resolve("test-app.properties"), "foo=bar");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
+		assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
 	}
 
 	@Test
@@ -67,8 +67,8 @@ public class AbstractApplicationIT {
 		System.setProperty("x", "z");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
-		assertThat(testApp.getConfig().findString("foo"), isPresentAnd(is("bar")));
-		assertThat(testApp.getConfig().findString("x"), isPresentAnd(is("z")));
+		assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
+		assertThat(testApp.getConfiguration().findString("x"), isPresentAnd(is("z")));
 	}
 
 	class TestApp extends AbstractApplication {
@@ -82,7 +82,7 @@ public class AbstractApplicationIT {
 		}
 
 		@Override
-		public Path getGlobalConfigHomeDirectory() {
+		public Path getGlobalConfigurationHomeDirectory() {
 			return globalConfigHomeDirectory;
 		}
 

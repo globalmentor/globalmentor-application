@@ -162,21 +162,21 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @implSpec The default implementation returns the user home directory.
 	 * @return The base directory for configuration and configuration subdirectory.
 	 */
-	public default Path getGlobalConfigHomeDirectory() {
+	public default Path getGlobalConfigurationHomeDirectory() {
 		return getUserHomeDirectory();
 	}
 
 	/**
 	 * Returns the directory used to find global configuration information for the application. The directory may not exist.
 	 * @apiNote This is analogous to the global configuration location of <a href="https://git-scm.com/docs/git-config">git-config</a>.
-	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the {@link #getGlobalConfigHomeDirectory()},
-	 *           using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name. Typically the config base directory is the user home
-	 *           directory, so that the path indicates something like <code>~/.my-app</code>.
+	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the
+	 *           {@link #getGlobalConfigurationHomeDirectory()}, using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name.
+	 *           Typically the config base directory is the user home directory, so that the path indicates something like <code>~/.my-app</code>.
 	 * @return The application-specific global config directory.
-	 * @see #getGlobalConfigHomeDirectory()
+	 * @see #getGlobalConfigurationHomeDirectory()
 	 */
-	public default Path getGlobalConfigDirectory() {
-		return getGlobalConfigHomeDirectory().resolve(DOTFILE_PREFIX + getSlug());
+	public default Path getGlobalConfigurationDirectory() {
+		return getGlobalConfigurationHomeDirectory().resolve(DOTFILE_PREFIX + getSlug());
 	}
 
 	/**

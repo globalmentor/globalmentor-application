@@ -294,7 +294,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * {@inheritDoc}
 	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then loads any local configuration
 	 *           overrides. The local configuration files are discovered in decreasing order of priority in the current working directory, each parent directory
-	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigHomeDirectory()}; checking at each directory for a
+	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigurationHomeDirectory()}; checking at each directory for a
 	 *           configuration file with the base name of {@link #getSlug()} as a dotfile. For example, for an application with a slug <code>my-app</code>, a
 	 *           configuration file <code>.my-app.properties</code> in the current working directory would override <code>../.my-app.properties</code> and finally
 	 *           <code>~/.my-app.properties</code>. The implementation then adds a configurations with higher priority for environment variables and system
@@ -304,7 +304,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @throws IOException if there was an I/O error loading the configuration.
 	 * @see #loadFoundGlobalConfiguration()
 	 * @see OperatingSystem#getWorkingDirectory()
-	 * @see #getGlobalConfigHomeDirectory()
+	 * @see #getGlobalConfigurationHomeDirectory()
 	 */
 	@Override
 	protected Configuration loadConfiguration() throws IOException {
@@ -314,7 +314,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		Optional<Configuration> foundLocalConfig;
 
 		//local config in global config home
-		final Path globalConfigHomeDirectory = getGlobalConfigHomeDirectory();
+		final Path globalConfigHomeDirectory = getGlobalConfigurationHomeDirectory();
 		foundLocalConfig = isDirectory(globalConfigHomeDirectory) //TODO remove check when CONFOUND-35 is fixed
 				? loadConfigurationForBaseFilename(globalConfigHomeDirectory, localConfigBaseFilename)
 				: Optional.empty();
