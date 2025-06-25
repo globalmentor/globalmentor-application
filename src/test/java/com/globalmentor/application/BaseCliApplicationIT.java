@@ -162,7 +162,7 @@ public class BaseCliApplicationIT {
 		}
 
 		@Override
-		public Path getGlobalConfigurationHomeDirectory() {
+		protected Path getGlobalConfigurationHomeDirectory() {
 			return globalConfigHomeDirectory;
 		}
 

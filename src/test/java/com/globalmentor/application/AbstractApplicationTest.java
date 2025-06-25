@@ -16,30 +16,25 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.java.OperatingSystem.*;
 import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 
 import org.junit.jupiter.api.*;
 
 /**
- * Tests of {@link Application}.
+ * Tests of {@link AbstractApplication}.
  * @author Garret Wilson
  */
-public class ApplicationTest {
+public class AbstractApplicationTest {
 
-	/** @see Application#getName() */
+	/** @see AbstractApplication#getGlobalConfigurationDirectory() */
 	@Test
-	void tesDefaultName() {
-		assertThat(new TestApp().getName(), is("TestApp"));
+	void testDefaultGlobalConfigurationDirectory() {
+		assertThat(new TestApp().getGlobalConfigurationDirectory(), is(getUserHomeDirectory().resolve(".test-app")));
 	}
 
-	/** @see Application#getSlug() */
-	@Test
-	void tesDefaultSlug() {
-		assertThat(new TestApp().getSlug(), is("test-app"));
-	}
-
-	static class TestApp implements Application {
+	static class TestApp extends AbstractApplication {
 		@Override
 		public String getVersion() {
 			return "0.0.0";

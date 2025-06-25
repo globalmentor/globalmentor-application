@@ -16,14 +16,11 @@
 
 package com.globalmentor.application;
 
-import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
-import static com.globalmentor.java.OperatingSystem.*;
 import static com.globalmentor.lex.CompoundTokenization.*;
 
 import java.io.*;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
@@ -155,28 +152,6 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 */
 	public default String getSlug() {
 		return CAMEL_CASE.to(KEBAB_CASE, getName());
-	}
-
-	/**
-	 * Returns the directory used as the parent directory for the global configuration subdirectory. The directory may not exist.
-	 * @implSpec The default implementation returns the user home directory.
-	 * @return The base directory for configuration and configuration subdirectory.
-	 */
-	public default Path getGlobalConfigurationHomeDirectory() {
-		return getUserHomeDirectory();
-	}
-
-	/**
-	 * Returns the directory used to find global configuration information for the application. The directory may not exist.
-	 * @apiNote This is analogous to the global configuration location of <a href="https://git-scm.com/docs/git-config">git-config</a>.
-	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the
-	 *           {@link #getGlobalConfigurationHomeDirectory()}, using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name.
-	 *           Typically the config base directory is the user home directory, so that the path indicates something like <code>~/.my-app</code>.
-	 * @return The application-specific global config directory.
-	 * @see #getGlobalConfigurationHomeDirectory()
-	 */
-	public default Path getGlobalConfigurationDirectory() {
-		return getGlobalConfigurationHomeDirectory().resolve(DOTFILE_PREFIX + getSlug());
 	}
 
 	/**

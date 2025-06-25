@@ -16,7 +16,9 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.java.OperatingSystem.*;
 import static io.confound.Confound.*;
 import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
@@ -181,6 +183,28 @@ public abstract class AbstractApplication implements Application {
 	 */
 	protected void initializeApplication() throws Exception {
 		configuration = loadConfiguration();
+	}
+
+	/**
+	 * Returns the directory used as the parent directory for the global configuration subdirectory. The directory may not exist.
+	 * @implSpec The default implementation returns the user home directory.
+	 * @return The base directory for configuration and configuration subdirectory.
+	 */
+	protected Path getGlobalConfigurationHomeDirectory() {
+		return getUserHomeDirectory();
+	}
+
+	/**
+	 * Returns the directory used to find global configuration information for the application. The directory may not exist.
+	 * @apiNote This is analogous to the global configuration location of <a href="https://git-scm.com/docs/git-config">git-config</a>.
+	 * @implSpec The default implementation returns the a path <code>{base}/.{slug}</code>, that is a subdirectory in the
+	 *           {@link #getGlobalConfigurationHomeDirectory()}, using {@link #getSlug()} prepended with <code>'.'</code> character as the subdirectory name.
+	 *           Typically the config base directory is the user home directory, so that the path indicates something like <code>~/.my-app</code>.
+	 * @return The application-specific global config directory.
+	 * @see #getGlobalConfigurationHomeDirectory()
+	 */
+	protected Path getGlobalConfigurationDirectory() {
+		return getGlobalConfigurationHomeDirectory().resolve(DOTFILE_PREFIX + getSlug());
 	}
 
 	/**
