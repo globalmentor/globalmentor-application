@@ -18,6 +18,8 @@ package com.globalmentor.application;
 
 import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.java.OperatingSystem.*;
+import static com.globalmentor.util.Optionals.*;
 import static io.confound.Confound.*;
 import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
@@ -36,9 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import com.github.dtmo.jfiglet.*;
-import com.globalmentor.java.OperatingSystem;
 import com.globalmentor.time.Durations;
-import com.globalmentor.util.Optionals;
 
 import io.clogr.*;
 import io.confound.config.*;
@@ -291,6 +291,15 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	}
 
 	/**
+	 * Returns the directory to initiate the search for a local configuration. The directory may not exist.
+	 * @implSpec The default implementation returns the current working directory.
+	 * @return The start of the directory hierarchy for discovering a local configuration.
+	 */
+	protected Path getLocalConfigurationDirectory() {
+		return getWorkingDirectory();
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then loads any local configuration
 	 *           overrides. The local configuration files are discovered in decreasing order of priority in the current working directory, each parent directory
@@ -303,27 +312,52 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @return The configuration information, if found and loaded successfully.
 	 * @throws IOException if there was an I/O error loading the configuration.
 	 * @see #loadFoundGlobalConfiguration()
-	 * @see OperatingSystem#getWorkingDirectory()
 	 * @see #getGlobalConfigurationHomeDirectory()
+	 * @see #getLocalConfigurationDirectory()
 	 */
 	@Override
 	protected Configuration loadConfiguration() throws IOException {
+		//3. global configuration
 		final Optional<Configuration> foundGlobalConfig = loadFoundGlobalConfiguration();
-
 		final String localConfigBaseFilename = DOTFILE_PREFIX + getSlug(); //e.g. `.my-app`
-		Optional<Configuration> foundLocalConfig;
-
-		//local config in global config home
+		//2. local configuration in global configuration home
 		final Path globalConfigHomeDirectory = getGlobalConfigurationHomeDirectory();
-		foundLocalConfig = isDirectory(globalConfigHomeDirectory) //TODO remove check when CONFOUND-35 is fixed
+		final Optional<Configuration> foundGlobalConfigHomeLocalConfig = isDirectory(globalConfigHomeDirectory) //TODO remove check when CONFOUND-35 is fixed
 				? loadConfigurationForBaseFilename(globalConfigHomeDirectory, localConfigBaseFilename)
 				: Optional.empty();
+		//1. local configurations in local configuration directory hierarchy
+		final Optional<Configuration> foundLocalConfig = findConfigurationChainInHierarchy(getLocalConfigurationDirectory(), localConfigBaseFilename);
+		final Optional<Configuration> fileConfigChain = fold(foundLocalConfig,
+				fold(foundGlobalConfigHomeLocalConfig, foundGlobalConfig, Configuration::withFallback), Configuration::withFallback);
+		//0. system/environment configuration
+		return getSystemConfiguration(fileConfigChain.orElse(null)); //override the file-based config chain, if any, with environment variables and system properties 
+	}
 
-		final Optional<Configuration> foundLocalConfigWithFallbackToGlobalConfig = Optionals.or(
-				foundLocalConfig.map(localConfig -> Configuration.withFallback(localConfig, foundGlobalConfig)), //if there is a local config chain, have if fall back to the global config
-				foundGlobalConfig); //otherwise just use the global config TODO improve fallback with CONFOUND-36
+	/**
+	 * Loads configurations up the given directory hierarchy, chaining fallback configurations in decreasing order of priority, finally falling back to the giving
+	 * terminal fallback configuration, if any.
+	 * @param configDirectory The configuration directory hierarchy to search.
+	 * @param baseFilename The base filename to use to find the configuration at each directory level.
+	 * @return A configuration representing the first configuration, if any, found up the hierarchy; chained with fallbacks to all other configurations found up
+	 *         the hierarchy.
+	 * @throws IOException if an I/O error occurs loading the configuration(s).
+	 * @throws ConfigurationException If there is invalid data or invalid state preventing a configuration from being loaded.
+	 */
+	protected static Optional<Configuration> findConfigurationChainInHierarchy(@Nonnull final Path configDirectory, @Nonnull final String baseFilename)
+			throws IOException, ConfigurationException {
+		//Perform a directory check at every level of the hierarchy in case some OS doesn't allow access to some folders,
+		//in which case this check will return `false` instead of throwing an exception
+		if(!isDirectory(configDirectory)) {
+			return Optional.empty(); //recursive base case			
+		}
 
-		return getSystemConfiguration(foundLocalConfigWithFallbackToGlobalConfig.orElse(null)); //override the local config with environment variables and system properties 
+		final Optional<Configuration> foundConfig = loadConfigurationForBaseFilename(configDirectory, baseFilename);
+		final Path configParentDirectory = configDirectory.getParent(); //check the next higher level
+		if(configParentDirectory == null) { //if there is no parent level, we're at the root
+			return foundConfig; //there can be no fallback at the root
+		}
+		final Optional<Configuration> foundParentConfig = findConfigurationChainInHierarchy(configParentDirectory, baseFilename); //get the parent's configuration chain
+		return fold(foundConfig, foundParentConfig, Configuration::withFallback);
 	}
 
 	/**
