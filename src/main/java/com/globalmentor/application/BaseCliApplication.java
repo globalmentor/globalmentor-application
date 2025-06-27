@@ -16,11 +16,18 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
+import static com.globalmentor.java.OperatingSystem.*;
+import static com.globalmentor.util.Optionals.*;
+import static io.confound.Confound.*;
+import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
+import static java.nio.file.Files.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 
@@ -72,6 +79,13 @@ import picocli.CommandLine.Model.CommandSpec;
  * <dd>Provides additional output information.</dd>
  * </dl>
  * @implSpec This implementation adds ANSI support via Jansi.
+ * @implSpec Using the application slug from {@link #getSlug()} as the identifier, this implementation loads a global configuration from a subdirectory in the
+ *           user's home directory in the form <code>~/.my-app/my-app.properties</code>. Local overriding configuration files are discovered in decreasing order
+ *           of priority in the current working directory, each parent directory of the working directory, and finally the user home directory; checking in each
+ *           directory for a configuration file in the form <code>.my-app.properties</code>. For example <code>.my-app.properties</code> in the current working
+ *           directory would override <code>../.my-app.properties</code> and finally <code>~/.my-app.properties</code>. All of these configuration files support
+ *           lookup fallback, with the highest priority configuration coming from system properties and then environment variables. Supported configuration file
+ *           formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
  * @author Garret Wilson
  * @see <a href="https://tldp.org/LDP/abs/html/standard-options.html">Advanced Bash-Scripting Guide: G.1. Standard Command-Line Options</a>
  */
@@ -235,16 +249,21 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
+	 * @implSpec This implementation returns the annotated name from the {@link Command} annotation on the concrete application class, such as
+	 *           <code>@Command(name = "myapp", …)</code>. The annotation is queried manually rather than accessing the command line command spec so that this
+	 *           value will be available even before application initialization. If the concrete application class has no {@link Command} annotation or does not
+	 *           provide a name, the default slug is returned.
+	 * @see Command
 	 */
 	@Override
-	public void initialize() throws Exception {
-		super.initialize();
-		AnsiConsole.systemInstall();
+	public String getSlug() {
+		return Optional.ofNullable(getClass().getAnnotation(Command.class)).map(Command::name) //get the `@Command` annotation `name` value
+				.orElseGet(super::getSlug); //if there is no `@Command` annotation, or it doesn't provide a `name`, return the default slug
 	}
 
 	/**
-	 * The picocli command line instance for the currently executing application. Only available while the program is executing; otherwise <code>null</code>.
+	 * The picocli command line instance for the currently executing application.
+	 * @implSpec This value is only available after initialization; otherwise <code>null</code>. Once set it is never unset.
 	 * @see #execute()
 	 */
 	@Nullable
@@ -252,26 +271,130 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
+	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
+	 */
+	protected void initializeSystem() throws Exception {
+		super.initializeSystem();
+		AnsiConsole.systemInstall();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation configures picocli and creates the parsed command line.
 	 */
 	@Override
-	protected int execute() {
+	public void initializeApplication() throws Exception {
+		super.initializeApplication();
 		final IExecutionExceptionHandler errorHandler = (exception, commandLine, parseResult) -> {
 			reportError(exception);
 			return EXIT_CODE_SOFTWARE;
 		};
-		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
 		this.commandLine = new CommandLine(this);
-		try {
-			commandLine.setExecutionExceptionHandler(errorHandler);
-			commandLine.registerConverter(Duration.class, Durations::parseUserInput);
-			final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
-			//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
-			commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
-			return commandLine.execute(getArgs());
-		} finally {
-			commandLine = null;
+		commandLine.setExecutionExceptionHandler(errorHandler);
+		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
+		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
+		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
+		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * Returns the directory to initiate the search for a local configuration. The directory may not exist.
+	 * @implSpec The default implementation returns the current working directory.
+	 * @return The start of the directory hierarchy for discovering a local configuration.
+	 */
+	protected Path getLocalConfigurationDirectory() {
+		return getWorkingDirectory();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then loads any local configuration
+	 *           overrides. The local configuration files are discovered in decreasing order of priority in the current working directory, each parent directory
+	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigurationHomeDirectory()}; checking in each directory for
+	 *           a configuration file with the base name of {@link #getSlug()} as a dotfile. For example, for an application with a slug <code>my-app</code>, a
+	 *           configuration file <code>.my-app.properties</code> in the current working directory would override <code>../.my-app.properties</code> and finally
+	 *           <code>~/.my-app.properties</code>. The implementation then adds a configurations with higher priority for environment variables and system
+	 *           properties.
+	 * @implNote Supported configuration file formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @return The configuration information, if found and loaded successfully.
+	 * @throws IOException if there was an I/O error loading the configuration.
+	 * @see #loadFoundGlobalConfiguration()
+	 * @see #getGlobalConfigurationHomeDirectory()
+	 * @see #getLocalConfigurationDirectory()
+	 */
+	@Override
+	protected Configuration loadConfiguration() throws IOException {
+		//3. global configuration
+		final Optional<Configuration> foundGlobalConfig = loadFoundGlobalConfiguration();
+		final String localConfigBaseFilename = DOTFILE_PREFIX + getSlug(); //e.g. `.my-app`
+		//2. local configuration in global configuration home
+		final Path globalConfigHomeDirectory = getGlobalConfigurationHomeDirectory();
+		final Optional<Configuration> foundGlobalConfigHomeLocalConfig = isDirectory(globalConfigHomeDirectory) //TODO remove check when CONFOUND-35 is fixed
+				? loadConfigurationForBaseFilename(globalConfigHomeDirectory, localConfigBaseFilename)
+				: Optional.empty();
+		//1. local configurations in local configuration directory hierarchy
+		final Set<Path> skippedLocalConfigDiretories = Set.of(
+				//Don't search the global config home directory, because it was already checked about, and would result in duplicate configs in the chain.
+				globalConfigHomeDirectory,
+				//Don't search the temp directory, because that directory potentially contains an enormous number of files and unacceptably bogs down
+				//the search. Moreover semantically files in the temporary directory are not intended for direct consumption based upon their location;
+				//the temporary directory is intended as a location _outside_ the normal hierarchy. The temporary directory normally wouldn't appear
+				//in the local config search hierarchy anyway; however it does appear in the hierarchy for integration tests, and that is where this
+				//setting has the most impact.
+				getTempDirectory());
+		final Optional<Configuration> foundLocalConfig = findConfigurationChainInHierarchy(getLocalConfigurationDirectory(), localConfigBaseFilename,
+				skippedLocalConfigDiretories);
+		final Optional<Configuration> fileConfigChain = fold(foundLocalConfig,
+				fold(foundGlobalConfigHomeLocalConfig, foundGlobalConfig, Configuration::withFallback), Configuration::withFallback);
+		//0. system/environment configuration
+		return getSystemConfiguration(fileConfigChain.orElse(null)); //override the file-based config chain, if any, with environment variables and system properties 
+	}
+
+	/**
+	 * Loads configurations up the given directory hierarchy, chaining fallback configurations in decreasing order of priority, finally falling back to the giving
+	 * terminal fallback configuration, if any.
+	 * @implSpec This implementation uses recursion to check each higher-level directory.
+	 * @implNote This implementation interprets "skip" to mean "don't even check to see if the directory is accessible". Hence it is possible that a accessible
+	 *           directories could be found above a skipped directory, even if the skipped directory is inaccessible and would normally terminate the search. This
+	 *           is unlikely to happen in practice, and the result if it were to happen is not unreasonable.
+	 * @param directory The configuration directory hierarchy to search.
+	 * @param baseFilename The base filename to use to find the configuration at each directory level.
+	 * @param skippedDirectories The directories that should be skipped in the search, without any checks for a configuration file.
+	 * @return A configuration representing the first configuration, if any, found up the hierarchy; chained with fallbacks to all other configurations found up
+	 *         the hierarchy.
+	 * @throws IOException if an I/O error occurs loading the configuration(s).
+	 * @throws ConfigurationException If there is invalid data or invalid state preventing a configuration from being loaded.
+	 */
+	protected static Optional<Configuration> findConfigurationChainInHierarchy(@Nonnull final Path directory, @Nonnull final String baseFilename,
+			@Nonnull final Set<Path> skippedDirectories) throws IOException, ConfigurationException {
+		final Optional<Configuration> foundConfig;
+		if(!skippedDirectories.contains(directory)) { //if this is not a directory to skip
+			//Perform a directory check at every level of the hierarchy in case some OS doesn't allow access to some folders,
+			//in which case this check will return `false` instead of throwing an exception. 
+			if(!isDirectory(directory)) {
+				return Optional.empty(); //recursive base case			
+			}
+			foundConfig = loadConfigurationForBaseFilename(directory, baseFilename);
+		} else { //if we are skipping this directory
+			foundConfig = Optional.empty(); //continue as if no config was found at this level
 		}
+		final Path configParentDirectory = directory.getParent(); //check the next higher level
+		if(configParentDirectory == null) { //if there is no parent level, we're at the root
+			return foundConfig; //there can be no fallback at the root
+		}
+		final Optional<Configuration> foundParentConfig = findConfigurationChainInHierarchy(configParentDirectory, baseFilename, skippedDirectories); //get the parent's configuration chain
+		return fold(foundConfig, foundParentConfig, Configuration::withFallback);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @implSpec This implementation uses picocli to execute the application using {@link CommandLine#execute(String...)}.
+	 */
+	@Override
+	protected int execute() {
+		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
+		checkState(commandLine != null, "Missing command-line information; application not properly initialized.");
+		return commandLine.execute(getArgs());
 	}
 
 	/**
@@ -290,9 +413,9 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
 	 */
 	@Override
-	public void cleanup() {
+	protected void cleanupSystem() {
 		AnsiConsole.systemUninstall();
-		super.cleanup();
+		super.cleanupSystem();
 	}
 
 	/**
@@ -326,15 +449,6 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		final Logger logger = getLogger();
 		logger.info("\n{}{}{}", ansi().bold().fg(Ansi.Color.GREEN), figletRenderer.renderText(appName), ansi().reset());
 		logger.info("{} {}\n", appName, appVersion);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @implSpec This version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
-	 */
-	@Override
-	public void reportError(final Throwable throwable) {
-		reportError(toErrorMessage(throwable), throwable);
 	}
 
 	/**
