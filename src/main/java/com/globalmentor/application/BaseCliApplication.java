@@ -269,13 +269,44 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	@Nullable
 	private volatile CommandLine commandLine;
 
+	private boolean isAnsiEnabled = true;
+
+	/**
+	 * Returns whether the application will support ANSI.
+	 * @apiNote ANSI support does not mean ANSI has yet been installed; this only happens during system initialization.
+	 * @implNote ANSI support uses Jansi.
+	 * @return Whether ANSI support is enabled for the application.
+	 * @see #initializeSystem()
+	 */
+	protected boolean isAnsiEnabled() {
+		return isAnsiEnabled;
+	}
+
+	/**
+	 * Turns ANSI support on or off. Changes to this setting must be done before system initialization.
+	 * @apiNote Enabling ANSI support does not actually install ANSI support immediately; this is done during system initialization based upon this setting.
+	 * @param enabled Whether to enable ANSI support.
+	 * @implNote ANSI support uses Jansi.
+	 * @throws IllegalStateException if ANSI support is being changed and application has already been initialized.
+	 */
+	protected void setAnsiEnabled(final boolean enabled) {
+		if(enabled == isAnsiEnabled) { //if the ANSI support setting isn't changing, there's nothing to do
+			return;
+		}
+		checkState(isInitialized() == false, "Cannot change whether ANSI is supported after application initialization.");
+		isAnsiEnabled = enabled;
+	}
+
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()}.
+	 * @implSpec This implementation calls {@link AnsiConsole#systemInstall()} if ANSI is enabled.
+	 * @see #isAnsiEnabled()
 	 */
 	protected void initializeSystem() throws Exception {
 		super.initializeSystem();
-		AnsiConsole.systemInstall();
+		if(isAnsiEnabled()) {
+			AnsiConsole.systemInstall();
+		}
 	}
 
 	/**
@@ -292,8 +323,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		this.commandLine = new CommandLine(this);
 		commandLine.setExecutionExceptionHandler(errorHandler);
 		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
+		//Set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate;
+		//and 2) we have a different preferred default width. Note that this automatically detects an
+		//ANSI input stream, so there is no need to check whether the application ANSI setting is enabled.
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
-		//set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate; and 2) we have a different preferred default width
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
 	}
 
@@ -410,11 +443,14 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()}.
+	 * @implSpec This implementation calls {@link AnsiConsole#systemUninstall()} if ANSI is enabled.
+	 * @see #isAnsiEnabled()
 	 */
 	@Override
 	protected void cleanupSystem() {
-		AnsiConsole.systemUninstall();
+		if(isAnsiEnabled()) {
+			AnsiConsole.systemUninstall();
+		}
 		super.cleanupSystem();
 	}
 
