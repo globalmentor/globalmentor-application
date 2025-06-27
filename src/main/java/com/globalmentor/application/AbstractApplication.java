@@ -41,6 +41,10 @@ import io.confound.config.*;
  * An abstract implementation of an application that by default is a console application.
  * @implSpec Errors are written in simple form to {@link System#err}.
  * @implSpec The default preference node is based upon the implementing application class.
+ * @implSpec Using the application slug from {@link #getSlug()} as the identifier, this implementation loads a global configuration from a subdirectory in the
+ *           user's home directory in the form <code>~/.my-app/my-app.properties</code>. System properties followed by environment variables allow overriding of
+ *           the global configuration file, with lookup fallback. Supported configuration file formats are governed by {@link io.confound.Confound} and its
+ *           installed configuration file format providers.
  * @author Garret Wilson
  */
 public abstract class AbstractApplication implements Application {
@@ -177,12 +181,15 @@ public abstract class AbstractApplication implements Application {
 
 	/**
 	 * Initializes the application itself. {@link #initializeSystem()} will already have been called.
-	 * @implSpec This implementation loads the application configuration using {@link #loadConfiguration()}.
+	 * @implSpec This implementation loads the application configuration using {@link #loadConfiguration()}, and installs it as the default Confound
+	 *           configuration.
 	 * @throws Exception if anything goes wrong.
 	 * @see #cleanupApplication()
+	 * @see io.confound.Confound#setDefaultConfiguration(Configuration)
 	 */
 	protected void initializeApplication() throws Exception {
 		configuration = loadConfiguration();
+		setDefaultConfiguration(configuration); //set the system default configuration using Confound TODO do the reverse assignment once CONFOUND-37 is implemented
 	}
 
 	/**
@@ -209,11 +216,11 @@ public abstract class AbstractApplication implements Application {
 
 	/**
 	 * Loads the global configuration information for the application.
-	 * @implSpec This implementation loads the application configuration from {@link #getGlobalConfigurationDirectory()}, if that directory exists and contains an
-	 *           appropriate config file. The configuration file is expected to have a base name of the application slug from {@link #getSlug()}, with an
-	 *           appropriate extension corresponding to a supported configuration file. For example a configuration file for an application with a slug
+	 * @implSpec This implementation loads the global application configuration from {@link #getGlobalConfigurationDirectory()}, if that directory exists and
+	 *           contains an appropriate config file. The configuration file is expected to have a base name of the application slug from {@link #getSlug()}, with
+	 *           an appropriate extension corresponding to a supported configuration file. For example a configuration file for an application with a slug
 	 *           <code>my-app</code> might be stored in <code>~/.my-app/my-app.properties</code>.
-	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @implNote Supported configuration file formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
 	 * @return The global configuration information, if found and loaded successfully.
 	 * @throws IOException if there was an I/O error loading the configuration.
 	 * @see #getGlobalConfigurationDirectory()

@@ -79,6 +79,13 @@ import picocli.CommandLine.Model.CommandSpec;
  * <dd>Provides additional output information.</dd>
  * </dl>
  * @implSpec This implementation adds ANSI support via Jansi.
+ * @implSpec Using the application slug from {@link #getSlug()} as the identifier, this implementation loads a global configuration from a subdirectory in the
+ *           user's home directory in the form <code>~/.my-app/my-app.properties</code>. Local overriding configuration files are discovered in decreasing order
+ *           of priority in the current working directory, each parent directory of the working directory, and finally the user home directory; checking in each
+ *           directory for a configuration file in the form <code>.my-app.properties</code>. For example <code>.my-app.properties</code> in the current working
+ *           directory would override <code>../.my-app.properties</code> and finally <code>~/.my-app.properties</code>. All of these configuration files support
+ *           lookup fallback, with the highest priority configuration coming from system properties and then environment variables. Supported configuration file
+ *           formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
  * @author Garret Wilson
  * @see <a href="https://tldp.org/LDP/abs/html/standard-options.html">Advanced Bash-Scripting Guide: G.1. Standard Command-Line Options</a>
  */
@@ -303,12 +310,12 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * {@inheritDoc}
 	 * @implSpec This implementation loads the global configuration if any using {@link #loadFoundGlobalConfiguration()}, and then loads any local configuration
 	 *           overrides. The local configuration files are discovered in decreasing order of priority in the current working directory, each parent directory
-	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigurationHomeDirectory()}; checking at each directory for
+	 *           of the working directory, and finally the global confirmation home {@link #getGlobalConfigurationHomeDirectory()}; checking in each directory for
 	 *           a configuration file with the base name of {@link #getSlug()} as a dotfile. For example, for an application with a slug <code>my-app</code>, a
 	 *           configuration file <code>.my-app.properties</code> in the current working directory would override <code>../.my-app.properties</code> and finally
 	 *           <code>~/.my-app.properties</code>. The implementation then adds a configurations with higher priority for environment variables and system
 	 *           properties.
-	 * @implNote Supported configuration files are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+	 * @implNote Supported configuration file formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
 	 * @return The configuration information, if found and loaded successfully.
 	 * @throws IOException if there was an I/O error loading the configuration.
 	 * @see #loadFoundGlobalConfiguration()
