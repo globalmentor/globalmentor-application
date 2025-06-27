@@ -233,6 +233,7 @@ public class BaseCliApplicationIT {
 
 		TestCliApp() {
 			super(NO_ARGUMENTS);
+			setAnsiEnabled(false); //prevent Jansi from being used, as it produces warnings during the build and moreover isn't needed for tests
 		}
 
 		@Override
