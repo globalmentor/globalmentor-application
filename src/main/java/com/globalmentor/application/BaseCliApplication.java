@@ -326,7 +326,17 @@ public abstract class BaseCliApplication extends AbstractApplication {
 				? loadConfigurationForBaseFilename(globalConfigHomeDirectory, localConfigBaseFilename)
 				: Optional.empty();
 		//1. local configurations in local configuration directory hierarchy
-		final Optional<Configuration> foundLocalConfig = findConfigurationChainInHierarchy(getLocalConfigurationDirectory(), localConfigBaseFilename);
+		final Set<Path> skippedLocalConfigDiretories = Set.of(
+				//Don't search the global config home directory, because it was already checked about, and would result in duplicate configs in the chain.
+				globalConfigHomeDirectory,
+				//Don't search the temp directory, because that directory potentially contains an enormous number of files and unacceptably bogs down
+				//the search. Moreover semantically files in the temporary directory are not intended for direct consumption based upon their location;
+				//the temporary directory is intended as a location _outside_ the normal hierarchy. The temporary directory normally wouldn't appear
+				//in the local config search hierarchy anyway; however it does appear in the hierarchy for integration tests, and that is where this
+				//setting has the most impact.
+				getTempDirectory());
+		final Optional<Configuration> foundLocalConfig = findConfigurationChainInHierarchy(getLocalConfigurationDirectory(), localConfigBaseFilename,
+				skippedLocalConfigDiretories);
 		final Optional<Configuration> fileConfigChain = fold(foundLocalConfig,
 				fold(foundGlobalConfigHomeLocalConfig, foundGlobalConfig, Configuration::withFallback), Configuration::withFallback);
 		//0. system/environment configuration
@@ -336,27 +346,36 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	/**
 	 * Loads configurations up the given directory hierarchy, chaining fallback configurations in decreasing order of priority, finally falling back to the giving
 	 * terminal fallback configuration, if any.
-	 * @param configDirectory The configuration directory hierarchy to search.
+	 * @implSpec This implementation uses recursion to check each higher-level directory.
+	 * @implNote This implementation interprets "skip" to mean "don't even check to see if the directory is accessible". Hence it is possible that a accessible
+	 *           directories could be found above a skipped directory, even if the skipped directory is inaccessible and would normally terminate the search. This
+	 *           is unlikely to happen in practice, and the result if it were to happen is not unreasonable.
+	 * @param directory The configuration directory hierarchy to search.
 	 * @param baseFilename The base filename to use to find the configuration at each directory level.
+	 * @param skippedDirectories The directories that should be skipped in the search, without any checks for a configuration file.
 	 * @return A configuration representing the first configuration, if any, found up the hierarchy; chained with fallbacks to all other configurations found up
 	 *         the hierarchy.
 	 * @throws IOException if an I/O error occurs loading the configuration(s).
 	 * @throws ConfigurationException If there is invalid data or invalid state preventing a configuration from being loaded.
 	 */
-	protected static Optional<Configuration> findConfigurationChainInHierarchy(@Nonnull final Path configDirectory, @Nonnull final String baseFilename)
-			throws IOException, ConfigurationException {
-		//Perform a directory check at every level of the hierarchy in case some OS doesn't allow access to some folders,
-		//in which case this check will return `false` instead of throwing an exception
-		if(!isDirectory(configDirectory)) {
-			return Optional.empty(); //recursive base case			
+	protected static Optional<Configuration> findConfigurationChainInHierarchy(@Nonnull final Path directory, @Nonnull final String baseFilename,
+			@Nonnull final Set<Path> skippedDirectories) throws IOException, ConfigurationException {
+		final Optional<Configuration> foundConfig;
+		if(!skippedDirectories.contains(directory)) { //if this is not a directory to skip
+			//Perform a directory check at every level of the hierarchy in case some OS doesn't allow access to some folders,
+			//in which case this check will return `false` instead of throwing an exception. 
+			if(!isDirectory(directory)) {
+				return Optional.empty(); //recursive base case			
+			}
+			foundConfig = loadConfigurationForBaseFilename(directory, baseFilename);
+		} else { //if we are skipping this directory
+			foundConfig = Optional.empty(); //continue as if no config was found at this level
 		}
-
-		final Optional<Configuration> foundConfig = loadConfigurationForBaseFilename(configDirectory, baseFilename);
-		final Path configParentDirectory = configDirectory.getParent(); //check the next higher level
+		final Path configParentDirectory = directory.getParent(); //check the next higher level
 		if(configParentDirectory == null) { //if there is no parent level, we're at the root
 			return foundConfig; //there can be no fallback at the root
 		}
-		final Optional<Configuration> foundParentConfig = findConfigurationChainInHierarchy(configParentDirectory, baseFilename); //get the parent's configuration chain
+		final Optional<Configuration> foundParentConfig = findConfigurationChainInHierarchy(configParentDirectory, baseFilename, skippedDirectories); //get the parent's configuration chain
 		return fold(foundConfig, foundParentConfig, Configuration::withFallback);
 	}
 
