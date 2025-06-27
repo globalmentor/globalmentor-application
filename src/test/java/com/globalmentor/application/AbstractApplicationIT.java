@@ -37,14 +37,14 @@ public class AbstractApplicationIT {
 	Path globalConfigHomeDirectory;
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigurationDirectoryExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigDirectoryExists() throws Exception {
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
 		assertThat(testApp.getConfiguration().findUri("foo"), is(Optional.empty()));
 	}
 
 	@Test
-	void verifyInitializesIfNoGlobalConfigurationFileExists() throws Exception {
+	void verifyInitializesIfNoGlobalConfigFileExists() throws Exception {
 		createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
@@ -52,18 +52,16 @@ public class AbstractApplicationIT {
 	}
 
 	@Test
-	void verifyLoadsGlobalConfiguration() throws Exception {
-		final Path configDirectory = createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
-		writeString(configDirectory.resolve("test-app.properties"), "foo=bar");
+	void verifyLoadsGlobalConfig() throws Exception {
+		writeString(createDirectory(globalConfigHomeDirectory.resolve(".test-app")).resolve("test-app.properties"), "foo=bar");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
 		assertThat(testApp.getConfiguration().findString("foo"), isPresentAnd(is("bar")));
 	}
 
 	@Test
-	void verifySystemPropertyTakesPrecedenceOverGlobalConfiguration() throws Exception {
-		final Path configDirectory = createDirectory(globalConfigHomeDirectory.resolve(".test-app"));
-		write(configDirectory.resolve("test-app.properties"), List.of("foo=bar", "x=y"));
+	void verifySystemPropertyTakesPrecedenceOverGlobalConfig() throws Exception {
+		write(createDirectory(globalConfigHomeDirectory.resolve(".test-app")).resolve("test-app.properties"), List.of("foo=bar", "x=y"));
 		System.setProperty("x", "z");
 		final TestApp testApp = new TestApp();
 		testApp.initialize();
