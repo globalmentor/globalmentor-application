@@ -254,6 +254,7 @@ public class BaseCliApplicationIT {
 		protected Path getLocalConfigurationDirectory() {
 			return localConfigDirectory;
 		}
+
 	}
 
 }

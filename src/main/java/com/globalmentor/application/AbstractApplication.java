@@ -136,6 +136,14 @@ public abstract class AbstractApplication implements Application {
 		return configuration;
 	}
 
+	/**
+	 * Sets the application configuration.
+	 * @param configuration The new application configuration.
+	 */
+	protected void setConfiguration(@Nonnull final Configuration configuration) {
+		this.configuration = requireNonNull(configuration);
+	}
+
 	private AtomicBoolean initialized = new AtomicBoolean(false);
 
 	/**
@@ -181,14 +189,15 @@ public abstract class AbstractApplication implements Application {
 
 	/**
 	 * Initializes the application itself. {@link #initializeSystem()} will already have been called.
-	 * @implSpec This implementation loads the application configuration using {@link #loadConfiguration()}, and installs it as the default Confound
-	 *           configuration.
+	 * @implSpec This implementation loads the application configuration using {@link #loadConfiguration()}, sets it as the application configuration using
+	 *           {@link #setConfiguration(Configuration)}, and installs it as the default Confound configuration.
 	 * @throws Exception if anything goes wrong.
 	 * @see #cleanupApplication()
 	 * @see io.confound.Confound#setDefaultConfiguration(Configuration)
 	 */
 	protected void initializeApplication() throws Exception {
-		configuration = loadConfiguration();
+		final Configuration configuration = loadConfiguration();
+		setConfiguration(configuration);
 		setDefaultConfiguration(configuration); //set the system default configuration using Confound TODO do the reverse assignment once CONFOUND-37 is implemented
 	}
 

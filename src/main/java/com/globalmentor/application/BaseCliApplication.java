@@ -16,20 +16,27 @@
 
 package com.globalmentor.application;
 
+import static com.globalmentor.application.Picocli.*;
 import static com.globalmentor.io.Filenames.*;
 import static com.globalmentor.java.Conditions.*;
 import static com.globalmentor.java.OperatingSystem.*;
+import static com.globalmentor.java.Strings.*;
+import static com.globalmentor.lex.CompoundTokenization.DOT_CASE;
 import static com.globalmentor.util.Optionals.*;
 import static io.confound.Confound.*;
 import static io.confound.config.file.FileSystemConfigurationManager.*;
 import static java.lang.String.format;
 import static java.nio.file.Files.*;
+import static java.util.Objects.*;
+import static java.util.stream.Stream.*;
 import static org.fusesource.jansi.Ansi.ansi;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import javax.annotation.*;
 
@@ -38,13 +45,14 @@ import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import com.github.dtmo.jfiglet.*;
+import com.globalmentor.java.Characters;
 import com.globalmentor.time.Durations;
 
 import io.clogr.*;
 import io.confound.config.*;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
-import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Model.*;
 
 /**
  * Base implementation for facilitating creation of a CLI application.
@@ -86,6 +94,10 @@ import picocli.CommandLine.Model.CommandSpec;
  *           directory would override <code>../.my-app.properties</code> and finally <code>~/.my-app.properties</code>. All of these configuration files support
  *           lookup fallback, with the highest priority configuration coming from system properties and then environment variables. Supported configuration file
  *           formats are governed by {@link io.confound.Confound} and its installed configuration file format providers.
+ * @implNote Currently fallback of a required global option to the configuration will not work if a subcommand is invoked. This will start working when
+ *           <a href="https://github.com/remkop/picocli/issues/2443">picocli Issue #2443: Default value provider is not called for required options</a> is
+ *           fixed. For the meantime a workaround is to use only non-required options if fallback to configuration is required, verifying the presence of the
+ *           option at runtime.
  * @author Garret Wilson
  * @see <a href="https://tldp.org/LDP/abs/html/standard-options.html">Advanced Bash-Scripting Guide: G.1. Standard Command-Line Options</a>
  */
@@ -257,8 +269,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Override
 	public String getSlug() {
-		return Optional.ofNullable(getClass().getAnnotation(Command.class)).map(Command::name) //get the `@Command` annotation `name` value
-				.orElseGet(super::getSlug); //if there is no `@Command` annotation, or it doesn't provide a `name`, return the default slug
+		return findAnnotatedCommandName(getClass()).orElseGet(super::getSlug); //if there is no `@Command` annotation, or it doesn't provide a `name`, return the default slug
 	}
 
 	/**
@@ -268,6 +279,10 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Nullable
 	private volatile CommandLine commandLine;
+
+	CommandLine getCommandLine() { //TODO document
+		return commandLine;
+	}
 
 	private boolean isAnsiEnabled = true;
 
@@ -323,11 +338,150 @@ public abstract class BaseCliApplication extends AbstractApplication {
 		this.commandLine = new CommandLine(this);
 		commandLine.setExecutionExceptionHandler(errorHandler);
 		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
+		commandLine.setDefaultValueProvider(new CommandLine.IDefaultValueProvider() {
+			@Override
+			public String defaultValue(final ArgSpec argSpec) throws Exception {
+				return findDefaultArg(argSpec).orElse(null);
+			}
+		});
 		//Set the picocli width manually because 1) Jansi's detection is faster and maybe more accurate;
 		//and 2) we have a different preferred default width. Note that this automatically detects an
 		//ANSI input stream, so there is no need to check whether the application ANSI setting is enabled.
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * Looks up a default CLI argument for the given picocli argument.
+	 * @apiNote This is a low-level picocli implementation detail which normally should not be overridden unless very custom default CLI argument lookup is
+	 *          needed.
+	 * @implSpec This implementation only handles options, delegating to {@link #findDefaultOption(OptionSpec)}.
+	 * @param argSpec The CLI option or positional parameter.
+	 * @return The default argument value, if found.
+	 */
+	protected Optional<String> findDefaultArg(final ArgSpec argSpec) {
+		return argSpec.isOption() ? findDefaultOption((OptionSpec)argSpec) : Optional.empty();
+	}
+
+	/**
+	 * Looks up a default CLI argument for the given picocli option.
+	 * @apiNote This is a low-level picocli implementation detail which normally should not be overridden unless very custom default CLI argument lookup is
+	 *          needed.
+	 * @implSpec This implementation delegates to {@link #findDefaultOptionConfigurationString(String)} if the option's configuration key is enabled.
+	 * @param optionSpec The CLI option.
+	 * @return The default argument value, if found.
+	 * @see #getConfigurationKey(OptionSpec)
+	 * @see #isOptionDefaultConfigurationEnabled(String)
+	 */
+	protected Optional<String> findDefaultOption(final OptionSpec optionSpec) {
+		final String configurationKey = getConfigurationKey(optionSpec);
+		if(isOptionDefaultConfigurationEnabled(configurationKey)) {
+			return findDefaultOptionConfigurationString(configurationKey);
+		}
+		return Optional.empty(); //configuration lookup was not enabled for this option  
+	}
+
+	/**
+	 * Looks up a default CLI argument for the given picocli option.
+	 * @apiNote This is a low-level picocli implementation detail which normally should not be overridden unless very custom default CLI argument lookup is
+	 *          needed.
+	 * @implSpec This implementation calls {@link Configuration#findString(String)}.
+	 * @implNote This implementation currently only supports string-based configuration values. A future improved version may detect the option type and look up
+	 *           the correct type and convert to a string in a more appropriate way.
+	 * @param configurationKey The configuration key determined to be appropriate for an option.
+	 * @return The default argument value, if found in the configuration.
+	 * @see #getConfiguration()
+	 */
+	protected Optional<String> findDefaultOptionConfigurationString(@Nonnull final String configurationKey) {
+		return getConfiguration().findString(configurationKey);
+	}
+
+	/** The character used one or more times to prefix an option. */
+	private static final Characters OPTION_PREFIXES = Characters.of('-');
+
+	/** A function for stripping the <code>'-'</code> and <code>"--"</code> prefixes from an option name. */
+	private static final Function<String, String> STRIP_OPTION_NAME_PREFIXES = optionName -> trim(optionName, OPTION_PREFIXES); //TODO switch to a simpler, more efficient utility
+
+	/**
+	 * Determines the configuration key to look up the given option.
+	 * @implSpec This implementation delegates to {@link #getQualifiedCommandNamesOptionConfigurationKey(Stream, CharSequence)}, passing the full, qualified
+	 *           command sequence and longest option name with prefixes removed.
+	 * @param optionSpec The picocli specification of the option.
+	 * @return The configuration key for looking up a fallback configuration for the identified option.
+	 */
+	protected final String getConfigurationKey(final OptionSpec optionSpec) {
+		return getQualifiedCommandNamesOptionConfigurationKey(qualifiedCommandSpecs(optionSpec.command()).map(CommandSpec::name),
+				STRIP_OPTION_NAME_PREFIXES.apply(optionSpec.longestName()));
+	}
+
+	/**
+	 * Determines the configuration key to look up an option given a sequence of command names and option name.
+	 * @implSpec This implementation joins the qualified command names and option name using <code>dot.case</code>.
+	 * @param qualifiedCommandNames The full sequence of command names, starting with the top-level application command.
+	 * @param optionName The name of the option, with no prefixes.
+	 * @return The configuration key for looking up a fallback configuration for the identified option.
+	 */
+	protected String getQualifiedCommandNamesOptionConfigurationKey(final Stream<? extends CharSequence> qualifiedCommandNames, final CharSequence optionName) {
+		final Stream<CharSequence> configurationKeySegments = concat(qualifiedCommandNames, Stream.of(requireNonNull(optionName)));
+		return DOT_CASE.join(configurationKeySegments::iterator);
+	}
+
+	/**
+	 * Determines the configuration key to look up an option given a sequence of command classes, <em>relative to the application command</em>; and option name.
+	 * For example, if this application is annotated with {@link Command} name <code>"my-cli"</code>; and a command sequence of <code>"do"</code> and
+	 * <code>"something"</code> are passed with an option of <code>"name-suffix"</code>, this method returns <code>"my-cli.do.something.name-suffix"</code> with
+	 * the default implementation. If the application itself has no annotated command name, it is simply left out.
+	 * @implSpec This implementation delegates to {@link #getQualifiedCommandNamesOptionConfigurationKey(Stream, CharSequence)}, passing the this application's
+	 *           command name, the annotated command names from the given classes, and the given option name.
+	 * @param relativeQualifiedCommandClasses The full sequence of command classes <em>relative</em> to (i.e. not including) the top-level application command.
+	 * @param optionName The name of the option, with no prefixes.
+	 * @return The configuration key for looking up a fallback configuration for the identified option.
+	 * @throws IllegalArgumentException if any of the given command classes are not annotated with {@link Command}.
+	 */
+	protected final String getRelativeQualifiedCommandClassesOptionConfigurationKey(final Stream<Class<?>> relativeQualifiedCommandClasses,
+			final CharSequence optionName) {
+		final Stream<String> qualifiedCommandNames = concat(findAnnotatedCommandName(getClass()).stream(),
+				relativeQualifiedCommandClasses.map(commandClass -> findAnnotatedCommandName(commandClass).orElseThrow(() -> new IllegalArgumentException(
+						"Command class `%s` not annotated with the `@%s` annotation.".formatted(commandClass.getName(), Command.class.getSimpleName())))));
+		return getQualifiedCommandNamesOptionConfigurationKey(qualifiedCommandNames, optionName);
+	}
+
+	private final Set<String> optionDefaultConfigurationKeys = new HashSet<>();
+
+	/**
+	 * Indicates whether a missing command option value has been opted in to fall back to the configuration for the given configuration key.
+	 * @param configurationKey The configuration key to allow option default value lookup.
+	 * @return <code>true</code> if the command option corresponding to the given configuration key has default fallback to the configuration enabled.
+	 * @see #enableOptionDefaultConfiguration(String).
+	 */
+	final boolean isOptionDefaultConfigurationEnabled(@Nonnull final String configurationKey) {
+		return optionDefaultConfigurationKeys.contains(requireNonNull(configurationKey));
+	}
+
+	/**
+	 * Opts in to looking up a missing command option value from the configuration. The conversion of a qualified command and its subcommand is deterministic,
+	 * allowing opt-in via that known configuration key.
+	 * @param configurationKey The configuration key to allow option default value lookup, in the form <code>command-name.subcommand-name.option-name</code> using
+	 *          the fully-qualified command sequence and the longest option name without the CLI option delimiter prefix. For example if the <code>aws</code> CLI
+	 *          allowed a default configuration for <code>aws s3 ls --bucket-name-prefix</code>, the configuration key would be
+	 *          <code>aws.s3.ls.bucket-name-prefix</code>.
+	 */
+	protected void enableOptionDefaultConfiguration(final String configurationKey) {
+		optionDefaultConfigurationKeys.add(requireNonNull(configurationKey));
+	}
+
+	/**
+	 * Opts in to looking up a missing command option value from the configuration.
+	 * @apiNote This is a convenience command that provides more compile-time type safety by providing the {@link Command} annotated command classes themselves.
+	 *          This method will not work with method-annotated commands.
+	 * @implNote This implementation uses {@link #getRelativeQualifiedCommandClassesOptionConfigurationKey(Stream, CharSequence)} to determine the configuration
+	 *           key, and then delegates to {@link #enableOptionDefaultConfiguration(String)}.
+	 * @param optionName The name of the option, with no prefixes.
+	 * @param relativeQualifiedCommandClasses The full sequence of command classes <em>relative</em> to (i.e. not including) the top-level application command.
+	 * @throws IllegalArgumentException if any of the given command classes are not annotated with {@link Command}.
+	 */
+	protected void enableOptionDefaultConfigurationForRelativeCommandClasses(final CharSequence optionName, final Class<?>... relativeQualifiedCommandClasses) {
+		enableOptionDefaultConfiguration(getRelativeQualifiedCommandClassesOptionConfigurationKey(Stream.of(relativeQualifiedCommandClasses), optionName));
 	}
 
 	/**
