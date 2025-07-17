@@ -46,7 +46,7 @@ public abstract class BaseCliSubcommand<P> {
 	 * @return This subcommand's parent command.
 	 * @throws IllegalStateException if the command has not yet been initialized.
 	 */
-	protected P getParentCommand() {
+	public P getParentCommand() {
 		checkState(parentCommand != null, "Subcommand not yet initialized.");
 		return parentCommand;
 	}
