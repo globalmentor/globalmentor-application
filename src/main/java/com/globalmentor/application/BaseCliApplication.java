@@ -280,7 +280,15 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	@Nullable
 	private volatile CommandLine commandLine;
 
-	CommandLine getCommandLine() { //TODO document
+	/**
+	 * Returns the picocli command line instance. This method must never be called before initialization.
+	 * @apiNote This is useful for further customizing picocli, e.g. by installing additional type converters specific to the application.
+	 * @return The picocli command line instance.
+	 * @throws IllegalStateException if this method is called before the application is initialized.
+	 * @see #initialize()
+	 */
+	protected CommandLine getCommandLine() {
+		checkState(commandLine != null, "Missing command-line information; application not properly initialized.");
 		return commandLine;
 	}
 
@@ -326,7 +334,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 
 	/**
 	 * {@inheritDoc}
-	 * @implSpec This implementation configures picocli and creates the parsed command line.
+	 * @implSpec This version configures picocli and creates the parsed command line. After this version has executed, the command line instance will be valid and
+	 *           {@link #getCommandLine()} can be called.
 	 */
 	@Override
 	public void initializeApplication() throws Exception {
@@ -580,8 +589,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	@Override
 	protected int execute() {
 		//run the application via picocli instead of using the default version, which will call appropriate command methods as needed
-		checkState(commandLine != null, "Missing command-line information; application not properly initialized.");
-		return commandLine.execute(getArgs());
+		return getCommandLine().execute(getArgs());
 	}
 
 	/**
@@ -592,7 +600,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 */
 	@Override
 	public void run() {
-		commandLine.usage(System.out);
+		getCommandLine().usage(System.out);
 	}
 
 	/**
