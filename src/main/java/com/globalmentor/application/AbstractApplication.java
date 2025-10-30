@@ -31,7 +31,7 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.annotation.*;
+import org.jspecify.annotations.*;
 
 import com.globalmentor.net.*;
 
@@ -122,7 +122,7 @@ public abstract class AbstractApplication implements Application {
 	 * Arguments constructor.
 	 * @param args The command line arguments.
 	 */
-	public AbstractApplication(@Nonnull final String[] args) {
+	public AbstractApplication(@NonNull final String[] args) {
 		this.args = requireNonNull(args);
 	}
 
@@ -140,7 +140,7 @@ public abstract class AbstractApplication implements Application {
 	 * Sets the application configuration.
 	 * @param configuration The new application configuration.
 	 */
-	protected void setConfiguration(@Nonnull final Configuration configuration) {
+	protected void setConfiguration(@NonNull final Configuration configuration) {
 		this.configuration = requireNonNull(configuration);
 	}
 
@@ -349,7 +349,7 @@ public abstract class AbstractApplication implements Application {
 	 * Sets the delay before shutting down. This delay is performed <em>after</em> {@link #onShutdown()} is called.
 	 * @param shutdownDelay The delay before shutdown.
 	 */
-	protected void setShutdownDelay(@Nonnull final Duration shutdownDelay) {
+	protected void setShutdownDelay(@NonNull final Duration shutdownDelay) {
 		this.shutdownDelay = requireNonNull(shutdownDelay);
 	}
 
