@@ -38,7 +38,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import javax.annotation.*;
+import org.jspecify.annotations.*;
 
 import org.fusesource.jansi.*;
 import org.slf4j.Logger;
@@ -243,7 +243,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @implSpec The {@link Level#WARN} log level is used by default if no other log level-related options are indicated.
 	 * @param args The command line arguments.
 	 */
-	public BaseCliApplication(@Nonnull final String[] args) {
+	public BaseCliApplication(@NonNull final String[] args) {
 		this(args, Level.WARN);
 	}
 
@@ -253,7 +253,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @param defaultLogLevel The default log level to use if no other log level-related options are indicated.
 	 */
 	@SuppressWarnings("this-escape") //this is somewhat benign, as `updateLogLevel()` will be called again later if/as the various settings get updated, e.g. by picocli; the sequence could possibly be improved, however
-	public BaseCliApplication(@Nonnull final String[] args, final Level defaultLogLevel) {
+	public BaseCliApplication(@NonNull final String[] args, final Level defaultLogLevel) {
 		super(args);
 		this.defaultLogLevel = defaultLogLevel;
 		updateLogLevel(); //update the log level based upon the debug setting
@@ -401,7 +401,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @return The default argument value, if found in the configuration.
 	 * @see #getConfiguration()
 	 */
-	protected Optional<String> findDefaultOptionConfigurationString(@Nonnull final String configurationKey) {
+	protected Optional<String> findDefaultOptionConfigurationString(@NonNull final String configurationKey) {
 		return getConfiguration().findString(configurationKey);
 	}
 
@@ -463,7 +463,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @return <code>true</code> if the command option corresponding to the given configuration key has default fallback to the configuration enabled.
 	 * @see #enableOptionDefaultConfiguration(String).
 	 */
-	final boolean isOptionDefaultConfigurationEnabled(@Nonnull final String configurationKey) {
+	final boolean isOptionDefaultConfigurationEnabled(@NonNull final String configurationKey) {
 		return optionDefaultConfigurationKeys.contains(requireNonNull(configurationKey));
 	}
 
@@ -561,8 +561,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @throws IOException if an I/O error occurs loading the configuration(s).
 	 * @throws ConfigurationException If there is invalid data or invalid state preventing a configuration from being loaded.
 	 */
-	protected static Optional<Configuration> findConfigurationChainInHierarchy(@Nonnull final Path directory, @Nonnull final String baseFilename,
-			@Nonnull final Set<Path> skippedDirectories) throws IOException, ConfigurationException {
+	protected static Optional<Configuration> findConfigurationChainInHierarchy(@NonNull final Path directory, @NonNull final String baseFilename,
+			@NonNull final Set<Path> skippedDirectories) throws IOException, ConfigurationException {
 		final Optional<Configuration> foundConfig;
 		if(!skippedDirectories.contains(directory)) { //if this is not a directory to skip
 			//Perform a directory check at every level of the hierarchy in case some OS doesn't allow access to some folders,
@@ -657,7 +657,7 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	 * @see Throwable#printStackTrace(PrintStream)
 	 */
 	@Override
-	public void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+	public void reportError(@NonNull final String message, @NonNull final Throwable throwable) {
 		reportError(message);
 		getLogger().debug("{}", message, throwable);
 	}

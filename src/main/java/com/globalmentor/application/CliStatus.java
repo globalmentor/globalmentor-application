@@ -33,7 +33,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntSupplier;
 
-import javax.annotation.*;
+import org.jspecify.annotations.*;
 
 import org.fusesource.jansi.AnsiPrintStream;
 import org.slf4j.Logger;
@@ -212,7 +212,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param out The output sink for printing the status.
 	 * @see ElapsingTime#fromNow()
 	 */
-	public CliStatus(@Nonnull final Appendable out) {
+	public CliStatus(@NonNull final Appendable out) {
 		this(out, ElapsingTime.fromNow());
 	}
 
@@ -220,7 +220,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * Start time constructor printing to {@link System#err}.
 	 * @param elapsingTime An existing record of elapsing time.
 	 */
-	public CliStatus(@Nonnull final ElapsingTime elapsingTime) {
+	public CliStatus(@NonNull final ElapsingTime elapsingTime) {
 		this(System.err, elapsingTime);
 	}
 
@@ -231,7 +231,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param out The output sink for printing the status.
 	 * @param elapsingTime An existing record of elapsing time.
 	 */
-	public CliStatus(@Nonnull final Appendable out, @Nonnull final ElapsingTime elapsingTime) {
+	public CliStatus(@NonNull final Appendable out, @NonNull final ElapsingTime elapsingTime) {
 		this.out = requireNonNull(out);
 		this.elapsingTime = requireNonNull(elapsingTime);
 		this.widthSupplier = out instanceof AnsiPrintStream ? ((AnsiPrintStream)out)::getTerminalWidth : () -> BaseCliApplication.DEFAULT_TERMINAL_WIDTH;
@@ -277,7 +277,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @see Logger#isTraceEnabled()
 	 * @see #setNotificationAsync(Level, String)
 	 */
-	public CompletableFuture<String> traceAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+	public CompletableFuture<String> traceAsync(@NonNull final Logger logger, @NonNull final String format, @NonNull final Object... arguments) {
 		return supplyAsync(() -> {
 			clearStatusLine();
 			logger.trace(format, arguments);
@@ -303,7 +303,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @see Logger#isDebugEnabled()
 	 * @see #setNotificationAsync(Level, String)
 	 */
-	public CompletableFuture<String> debugAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+	public CompletableFuture<String> debugAsync(@NonNull final Logger logger, @NonNull final String format, @NonNull final Object... arguments) {
 		return supplyAsync(() -> {
 			clearStatusLine();
 			logger.debug(format, arguments);
@@ -329,7 +329,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @see Logger#isInfoEnabled()
 	 * @see #setNotificationAsync(Level, String)
 	 */
-	public CompletableFuture<String> infoAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+	public CompletableFuture<String> infoAsync(@NonNull final Logger logger, @NonNull final String format, @NonNull final Object... arguments) {
 		return supplyAsync(() -> {
 			clearStatusLine();
 			logger.info(format, arguments);
@@ -355,7 +355,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @see Logger#isWarnEnabled()
 	 * @see #setNotificationAsync(Level, String)
 	 */
-	public CompletableFuture<String> warnAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+	public CompletableFuture<String> warnAsync(@NonNull final Logger logger, @NonNull final String format, @NonNull final Object... arguments) {
 		return supplyAsync(() -> {
 			clearStatusLine();
 			logger.warn(format, arguments);
@@ -381,7 +381,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @see Logger#isErrorEnabled()
 	 * @see #setNotificationAsync(Level, String)
 	 */
-	public CompletableFuture<String> errorAsync(@Nonnull final Logger logger, @Nonnull final String format, @Nonnull final Object... arguments) {
+	public CompletableFuture<String> errorAsync(@NonNull final Logger logger, @NonNull final String format, @NonNull final Object... arguments) {
 		return supplyAsync(() -> {
 			clearStatusLine();
 			logger.error(format, arguments);
@@ -434,7 +434,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param work The ongoing work to add.
 	 * @see #printStatusLineAsync()
 	 */
-	public void addWork(@Nonnull final W work) {
+	public void addWork(@NonNull final W work) {
 		if(workInProgress.add(requireNonNull(work))) {
 			printStatusLineAsync();
 		}
@@ -446,7 +446,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param work The ongoing work to remove.
 	 * @see #printStatusLineAsync()
 	 */
-	public void removeWork(@Nonnull final W work) {
+	public void removeWork(@NonNull final W work) {
 		if(workInProgress.remove(requireNonNull(work))) {
 			printStatusLineAsync();
 		}
@@ -459,7 +459,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param work The work to display in the status.
 	 * @return A status string for the work.
 	 */
-	protected String toStatusLabel(@Nonnull final W work) {
+	protected String toStatusLabel(@NonNull final W work) {
 		return "/" + getWorkCount() + ": " + toLabel(work);
 	}
 
@@ -470,7 +470,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param work The work to display in the status.
 	 * @return A label for the work itself.
 	 */
-	protected CharSequence toLabel(@Nonnull final W work) {
+	protected CharSequence toLabel(@NonNull final W work) {
 		return constrain(work.toString(), getMaxWorkLabelLength(), CONSTRAIN_TRUNCATE_MIDDLE, "...");
 	}
 
@@ -521,7 +521,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param statusMessage The status message do be displayed.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> setStatusMessageAsync(@Nonnull final String statusMessage) {
+	public CompletableFuture<String> setStatusMessageAsync(@NonNull final String statusMessage) {
 		return supplyAsync(() -> setStatusMessage(statusMessage), getExecutorService());
 	}
 
@@ -530,7 +530,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param statusMessage The status message do be displayed.
 	 * @return The updated status line.
 	 */
-	protected synchronized String setStatusMessage(@Nonnull final String statusMessage) {
+	protected synchronized String setStatusMessage(@NonNull final String statusMessage) {
 		this.statusMessage = Optional.of(statusMessage);
 		return printStatusLine();
 	}
@@ -571,7 +571,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param text The status text to display.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> setNotificationAsync(@Nonnull final String text) {
+	public CompletableFuture<String> setNotificationAsync(@NonNull final String text) {
 		return setNotificationAsync(NOTIFICATION_DEFAULT_SEVERITY, text, NOTIFICATION_DEFAULT_DURATION);
 	}
 
@@ -581,7 +581,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param duration The duration of the notification.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> setNotificationAsync(@Nonnull final String text, @Nonnull final Duration duration) {
+	public CompletableFuture<String> setNotificationAsync(@NonNull final String text, @NonNull final Duration duration) {
 		return setNotificationAsync(NOTIFICATION_DEFAULT_SEVERITY, text, duration);
 	}
 
@@ -591,7 +591,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param text The status text to display.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> setNotificationAsync(@Nonnull final Level severity, @Nonnull final String text) {
+	public CompletableFuture<String> setNotificationAsync(@NonNull final Level severity, @NonNull final String text) {
 		return setNotificationAsync(severity, text, NOTIFICATION_DEFAULT_DURATION);
 	}
 
@@ -602,7 +602,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param duration The duration of the notification.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> setNotificationAsync(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+	public CompletableFuture<String> setNotificationAsync(@NonNull final Level severity, @NonNull final String text, @NonNull final Duration duration) {
 		return supplyAsync(() -> setNotification(severity, text, duration), getExecutorService());
 	}
 
@@ -613,7 +613,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param duration The duration of the notification.
 	 * @return The updated status line.
 	 */
-	protected synchronized String setNotification(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+	protected synchronized String setNotification(@NonNull final Level severity, @NonNull final String text, @NonNull final Duration duration) {
 		notification = Optional.of(new Notification(severity, text, duration));
 		return printStatusLine();
 	}
@@ -659,7 +659,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param line The line to print.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> printLineAsync(@Nonnull final CharSequence line) {
+	public CompletableFuture<String> printLineAsync(@NonNull final CharSequence line) {
 		return printLinesAsync(singleton(line));
 	}
 
@@ -671,7 +671,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param lines The lines to print.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> printLinesAsync(@Nonnull final CharSequence... lines) {
+	public CompletableFuture<String> printLinesAsync(@NonNull final CharSequence... lines) {
 		return printLinesAsync(List.of(lines));
 	}
 
@@ -682,7 +682,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @param lines The lines to print.
 	 * @return The future updated status line.
 	 */
-	public CompletableFuture<String> printLinesAsync(@Nonnull final Iterable<? extends CharSequence> lines) {
+	public CompletableFuture<String> printLinesAsync(@NonNull final Iterable<? extends CharSequence> lines) {
 		return supplyAsync(() -> printLines(lines), getExecutorService());
 	}
 
@@ -699,7 +699,7 @@ public class CliStatus<W> implements Executor, Closeable {
 	 * @throws UncheckedIOException if {@link #getOut()} throws an {@link IOException} when appending information.
 	 * @see #printStatusLine()
 	 */
-	protected synchronized String printLines(@Nonnull final Iterable<? extends CharSequence> lines) {
+	protected synchronized String printLines(@NonNull final Iterable<? extends CharSequence> lines) {
 		final Iterator<? extends CharSequence> lineIterator = lines.iterator();
 		if(!lineIterator.hasNext()) {
 			return lastStatusLine; //nothing to do
@@ -884,7 +884,7 @@ public class CliStatus<W> implements Executor, Closeable {
 		 * @param text The status text to display.
 		 * @param duration The duration of the notification.
 		 */
-		private Notification(@Nonnull final Level severity, @Nonnull final String text, @Nonnull final Duration duration) {
+		private Notification(@NonNull final Level severity, @NonNull final String text, @NonNull final Duration duration) {
 			this.severity = requireNonNull(severity);
 			this.text = requireNonNull(text);
 			this.endTimeNs = System.nanoTime() + duration.toNanos();
@@ -895,7 +895,7 @@ public class CliStatus<W> implements Executor, Closeable {
 		 * @param severity The notification severity.
 		 * @return The ANSI color for the severity, if any.
 		 */
-		public static Optional<Color> findColor(@Nonnull final Level severity) {
+		public static Optional<Color> findColor(@NonNull final Level severity) {
 			switch(severity) {
 				case ERROR:
 					return Optional.of(Color.RED);

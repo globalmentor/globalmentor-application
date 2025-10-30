@@ -25,7 +25,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.prefs.Preferences;
 
-import javax.annotation.*;
+import org.jspecify.annotations.*;
 
 import com.globalmentor.model.Named;
 import com.globalmentor.net.*;
@@ -79,7 +79,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @throws ConfigurationException If an I/O error occurs, or there is invalid data or invalid state preventing the configuration from being loaded.
 	 * @see #CONFIG_CLASSIFIER_BUILD
 	 */
-	public static Optional<Configuration> loadBuildInfo(@Nonnull final Class<?> applicationClass) throws ConfigurationException {
+	public static Optional<Configuration> loadBuildInfo(@NonNull final Class<?> applicationClass) throws ConfigurationException {
 		try {
 			return ResourcesConfigurationManager.loadConfigurationForClass(applicationClass, CONFIG_CLASSIFIER_BUILD);
 		} catch(final IOException ioException) {
@@ -228,7 +228,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 *          shutdown activities will occur.
 	 * @param application The application to start.
 	 */
-	public static void start(@Nonnull final Application application) {
+	public static void start(@NonNull final Application application) {
 		int result = EXIT_CODE_OK; //start out assuming a neutral result
 		try {
 			try {
@@ -267,7 +267,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @throws IllegalArgumentException if the given status is negative.
 	 * @see #exit(int)
 	 */
-	public default void end(@Nonnegative final int status) {
+	public default void end(final int status) {
 		checkArgumentNotNegative(status);
 		exit(status); //perform the exit
 	}
@@ -311,7 +311,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @implSpec The default version delegates to {@link #reportError(String, Throwable)} using the message determined by {@link #toErrorMessage(Throwable)}.
 	 * @param throwable The condition that caused the error.
 	 */
-	public default void reportError(@Nonnull final Throwable throwable) {
+	public default void reportError(@NonNull final Throwable throwable) {
 		reportError(toErrorMessage(throwable), throwable);
 	}
 
@@ -322,7 +322,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @param throwable The condition that caused the error.
 	 * @see Throwable#printStackTrace(PrintStream)
 	 */
-	public default void reportError(@Nonnull final String message, @Nonnull final Throwable throwable) {
+	public default void reportError(@NonNull final String message, @NonNull final Throwable throwable) {
 		reportError(message);
 		throwable.printStackTrace(System.err);
 	}
@@ -332,7 +332,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @implSpec The default implementation writes the message to {@link System#err}.
 	 * @param message The error to display.
 	 */
-	public default void reportError(@Nonnull final String message) {
+	public default void reportError(@NonNull final String message) {
 		System.err.println(message); //display the error in the error output
 	}
 
@@ -344,7 +344,7 @@ public interface Application extends Runnable, Named<String>, Clogged {
 	 * @return The error message.
 	 * @see Throwable#getMessage()
 	 */
-	public default @Nonnull String toErrorMessage(final Throwable throwable) {
+	public default @NonNull String toErrorMessage(final Throwable throwable) {
 		if(throwable instanceof FileNotFoundException) {
 			return "File or directory not found: " + throwable.getMessage(); //TODO i18n
 		} else if(throwable instanceof NoSuchFileException) {
