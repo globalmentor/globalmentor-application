@@ -26,7 +26,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.*;
 
 /**
- * Utilities for working with Picocli.
+ * Utilities for working with <a href="https://picocli.info/">picocli</a>.
  * @apiNote This class is not part of the public API.
  * @author Garret Wilson
  */
