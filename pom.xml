@@ -5,12 +5,12 @@
 	<parent>
 		<groupId>com.globalmentor</groupId>
 		<artifactId>globalmentor-root</artifactId>
-		<version>2.0.0</version>
+		<version>3.0.1</version>
 		<relativePath />
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.21.0-SNAPSHOT</version>
+	<version>0.25.0-SNAPSHOT</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
@@ -32,14 +32,14 @@
 	</scm>
 
 	<properties>
-		<maven.compiler.release>21</maven.compiler.release>
+		<maven.compiler.release>25</maven.compiler.release>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.globalmentor</groupId>
 			<artifactId>globalmentor-core</artifactId>
-			<version>0.17.1-SNAPSHOT</version>
+			<version>0.21.0</version>
 		</dependency>
 
 		<dependency>
