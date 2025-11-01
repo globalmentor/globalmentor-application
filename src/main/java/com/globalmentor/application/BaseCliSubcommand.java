@@ -27,6 +27,7 @@ import picocli.CommandLine.*;
  * @param <P> The type of parent command.
  * @author Garret Wilson
  */
+@Command(mixinStandardHelpOptions = true)
 public abstract class BaseCliSubcommand<P> {
 
 	/** No-args constructor. */
