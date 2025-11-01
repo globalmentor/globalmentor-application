@@ -102,7 +102,7 @@ import picocli.CommandLine.Model.*;
  * @see <a href="https://tldp.org/LDP/abs/html/standard-options.html">Advanced Bash-Scripting Guide: G.1. Standard Command-Line Options</a>
  */
 @Command(versionProvider = BaseCliApplication.MetadataProvider.class, mixinStandardHelpOptions = true)
-public abstract class BaseCliApplication extends AbstractApplication {
+public abstract class BaseCliApplication extends AbstractApplication implements PicocliApplication {
 
 	/**
 	 * The default terminal width if one cannot be determined.
@@ -280,14 +280,8 @@ public abstract class BaseCliApplication extends AbstractApplication {
 	@Nullable
 	private volatile CommandLine commandLine;
 
-	/**
-	 * Returns the picocli command line instance. This method must never be called before initialization.
-	 * @apiNote This is useful for further customizing picocli, e.g. by installing additional type converters specific to the application.
-	 * @return The picocli command line instance.
-	 * @throws IllegalStateException if this method is called before the application is initialized.
-	 * @see #initialize()
-	 */
-	protected CommandLine getCommandLine() {
+	@Override
+	public CommandLine getCommandLine() {
 		checkState(commandLine != null, "Missing command-line information; application not properly initialized.");
 		return commandLine;
 	}
