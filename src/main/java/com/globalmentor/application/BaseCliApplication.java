@@ -338,7 +338,23 @@ public abstract class BaseCliApplication extends AbstractApplication implements 
 			reportError(exception);
 			return EXIT_CODE_SOFTWARE;
 		};
-		this.commandLine = new CommandLine(this);
+		try {
+			this.commandLine = new CommandLine(this);
+		} catch(final Throwable commandLineInitializationProblem) {
+			// If there was an error instantiating the command line, which interprets the command-line arguments,
+			// the debug flag will not yet have been set. Thus the error's details, which are logged at debug level,
+			// won't be shown. Try to compensate for this corner case by manually scanning for the debug flag
+			// and trying to for the debug level on before allowing the error to propagate.
+			if(Stream.of(getArgs()).anyMatch(arg -> "--debug".equals(arg) || "-d".equals(arg))) {
+				try {
+					setDebug(true);
+				} catch(final Throwable setDebugProblem) {
+					System.err.println("Unable to manually set the debug level before reporting command line initialization problem.");
+					setDebugProblem.printStackTrace(System.err);
+				}
+			}
+			throw commandLineInitializationProblem;
+		}
 		commandLine.setExecutionExceptionHandler(errorHandler);
 		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
 		commandLine.setDefaultValueProvider(new CommandLine.IDefaultValueProvider() {
