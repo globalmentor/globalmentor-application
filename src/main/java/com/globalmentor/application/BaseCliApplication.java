@@ -328,8 +328,13 @@ public abstract class BaseCliApplication extends AbstractApplication implements 
 
 	/**
 	 * {@inheritDoc}
+	 * @apiNote An override of this method is the proper location to register type converters <em>after</em> the super version has been called. If a third-party
+	 *          converter that throws {@link IllegalArgumentException} upon valid input is being registered, it should be adapted using
+	 *          {@link #toTypeConverter(Function)} in order to ensure concise and user-friendly error message.
 	 * @implSpec This version configures picocli and creates the parsed command line. After this version has executed, the command line instance will be valid and
 	 *           {@link #getCommandLine()} can be called.
+	 * @see CommandLine#registerConverter(Class, ITypeConverter)
+	 * @see #toTypeConverter(Function)
 	 */
 	@Override
 	public void initializeApplication() throws Exception {
@@ -356,7 +361,7 @@ public abstract class BaseCliApplication extends AbstractApplication implements 
 			throw commandLineInitializationProblem;
 		}
 		commandLine.setExecutionExceptionHandler(errorHandler);
-		commandLine.registerConverter(Duration.class, Durations::parseUserInput);
+		commandLine.registerConverter(Duration.class, toTypeConverter(Durations::parseUserInput));
 		commandLine.setDefaultValueProvider(new CommandLine.IDefaultValueProvider() {
 			@Override
 			public String defaultValue(final ArgSpec argSpec) throws Exception {
@@ -368,6 +373,26 @@ public abstract class BaseCliApplication extends AbstractApplication implements 
 		//ANSI input stream, so there is no need to check whether the application ANSI setting is enabled.
 		final int detectedTerminalWidth = System.out instanceof AnsiPrintStream ? ((AnsiPrintStream)System.out).getTerminalWidth() : 0;
 		commandLine.setUsageHelpWidth(detectedTerminalWidth > 0 ? detectedTerminalWidth : DEFAULT_TERMINAL_WIDTH);
+	}
+
+	/**
+	 * Adapts a typical existing third-party converter (such as {@link Integer#parseInt(String)} to work as a picocli {@link ITypeConverter}. Any
+	 * {@link IllegalArgumentException} thrown during conversion (e.g. {@link NumberFormatException}) will be converted to a
+	 * {@link CommandLine.TypeConversionException}, which will result in a more concise and more user-friendly error message. The actual conversion logic will not
+	 * be changed.
+	 * @apiNote The primary purpose of this adapter function is to ensure conversion errors eventually are shown in a user-friendly format.
+	 * @param <K> The type of the result of the conversion.
+	 * @param converter The converter function.
+	 * @return A picocli type converter.
+	 */
+	protected static <K> ITypeConverter<K> toTypeConverter(final Function<String, K> converter) {
+		return value -> {
+			try {
+				return converter.apply(value);
+			} catch(final IllegalArgumentException illegalArgumentException) {
+				throw (TypeConversionException)new TypeConversionException(illegalArgumentException.getMessage()).initCause(illegalArgumentException);
+			}
+		};
 	}
 
 	/**
