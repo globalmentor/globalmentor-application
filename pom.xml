@@ -5,12 +5,12 @@
 	<parent>
 		<groupId>com.globalmentor</groupId>
 		<artifactId>globalmentor-root</artifactId>
-		<version>3.0.1</version>
+		<version>3.0.2</version>
 		<relativePath />
 	</parent>
 
 	<artifactId>globalmentor-application</artifactId>
-	<version>0.25.0-SNAPSHOT</version>
+	<version>0.25.0</version>
 
 	<name>GlobalMentor Application</name>
 	<description>GlobalMentor Java application library.</description>
@@ -32,6 +32,7 @@
 	</scm>
 
 	<properties>
+		<enableCentralPublishing>true</enableCentralPublishing>
 		<maven.compiler.release>25</maven.compiler.release>
 	</properties>
 
